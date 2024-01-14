@@ -9,8 +9,8 @@ download_large_file_from_google_drive()
     file_id="$1"
     pathname="$2"
 
-    confirm_string=`curl -c /tmp/cookie$$ -s -L "https://drive.google.com/uc?export=download&id=$file_id" | grep -o "confirm=[a-zA-Z0-9_-]*"`
-    curl -Lb /tmp/cookie$$ "https://drive.google.com/uc?export=download&$confirm_string&id=$file_id" -o "$pathname"
+    download_large_file_without_virus_check=`curl -c /tmp/cookie$$ -s -L "https://drive.google.com/uc?export=download&id=$file_id" | grep -o "confirm=[a-zA-Z0-9_-]*"`
+    curl -Lb /tmp/cookie$$ "https://drive.google.com/uc?export=download&$download_large_file_without_virus_check&id=$file_id" -o "$pathname"
 
     rm /tmp/cookie$$
 }

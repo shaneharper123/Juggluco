@@ -1,6 +1,9 @@
 #!/bin/bash
 
+# XXX 17 Jan '24: This script now fails to download the Juggluco apk file from Google Drive. Perhaps there has been a change to Google Drive that broke this script. The download_large_file_without_virus_check variable in download_large_file_from_google_drive() no longer gets set as grep fails to find a match and returns 1. (The command line given on https://medium.com/@acpanjan/download-google-drive-files-using-wget-3c2c025a8b99 also doesn't work now.) One way to fix this script would be to put the Juggluco apk file somewhere where a straightforward use of curl could be used to download it.
+
 set -o errexit
+set -o errtrace
 trap 'echo; echo Aborting.' ERR
 
 
@@ -11,6 +14,7 @@ download_large_file_from_google_drive()
 
     download_large_file_without_virus_check=`curl -c /tmp/cookie$$ -s -L "https://drive.google.com/uc?export=download&id=$file_id" | grep -o "confirm=[a-zA-Z0-9_-]*"`
     curl -Lb /tmp/cookie$$ "https://drive.google.com/uc?export=download&$download_large_file_without_virus_check&id=$file_id" -o "$pathname"
+    # XXX Compute file checksum; fail if checksum isn't as expected.
 
     rm /tmp/cookie$$
 }

@@ -87,6 +87,7 @@ jugglucotext iwtext {
 .lastscanned="נסרק אחרון:",
 .laststream="זרם אחרון:",
 .sensorends="קצה החיישן:",
+	.sensorexpectedend="Expected to end: ",
 #ifndef WEAROS
 .newamount="כמות חדשה",
 .averageglucose="גלוקוז ממוצע: ",
@@ -103,7 +104,11 @@ jugglucotext iwtext {
 "שעון",
 "חיישן",
 "הגדרות",
+#if defined(SIBIONICS)
+"Sibionics",
+#else
 "על אודות",
+#endif
 "סגור",
 "עצור אזעקה"
 },
@@ -212,8 +217,9 @@ iwtext.newamount,
 .Falling="Falling",
 .Stable="Changing slowly",
 .Rising="Rising",
-.RisingQuickly="Rising quickly"
+.RisingQuickly="Rising quickly",
 #endif
+.receivingpastvalues="Receiving old values"
 }
 
 

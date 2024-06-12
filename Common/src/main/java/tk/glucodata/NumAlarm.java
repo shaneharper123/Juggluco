@@ -41,8 +41,10 @@ static final private String LOG_ID="NumAlarm";
         @Override
         public void onReceive(Context context, Intent intent) {
 	   String action=intent.getAction();
+         Applic app=(Applic) context.getApplicationContext();
+        app.initproc();
 	   Log.i(LOG_ID,"onReceive "+((action!=null)?action:" null"));
-	   handlealarm((Application) context.getApplicationContext());
+	   handlealarm(app);
 	   if(action!=null) {
 	   	if(Notify.closename.equals(action)) {
 				if( ((KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE)).isKeyguardLocked()) {
@@ -51,6 +53,12 @@ static final private String LOG_ID="NumAlarm";
 					killprogram(0);
 					}
 			}
+         else {
+	   	   if(Notify.stopalarm.equals(action)) {
+               Log.i(LOG_ID,"Stop Alarm");
+			      Notify.stopalarm();
+               }
+            }
 		}
 //		if(!keeprunning.started&&(Intent.ACTION_BOOT_COMPLETED.equals(action))) 
 	if(!keeprunning.started) {
@@ -93,7 +101,7 @@ static void numalarm(Application mApp) {
 		}
 	builder.append(labels.get(nums[i]));
 	builder.append(mApp.getString(R.string.notentered));
-	Notify.init();
+	Notify.init(mApp);
 	Notify.onenot.amountalarm(builder.toString());
 	}
 static void	   handlealarm(Application context) {

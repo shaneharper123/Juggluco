@@ -33,7 +33,7 @@
 #define LOGSTRINGTAG(...) LOGSTRING("watchvalue: " __VA_ARGS__)
 extern Sensoren *sensors;
 extern std::vector<int> usedsensors;
-const int maxwatchage=60*3;
+const int maxwatchage=maxbluetoothage;
 extern bool networkpresent;
 
 #define javapackage "tk/glucodata/"
@@ -96,6 +96,8 @@ extern "C" JNIEXPORT jlong  JNICALL   fromjava(lastglucosetime)(JNIEnv *env, jcl
 
 int getglucosestr(uint32_t nonconvert,char *glucosestr,int maxglucosestr);
 
+
+extern float threshold(float drate);
 extern "C" JNIEXPORT jobject  JNICALL   fromjava(lastglucose)(JNIEnv *env, jclass cl) {
 	const uint32_t nu=time(nullptr);	
 	const auto *hist=getlaststream(nu);
@@ -129,9 +131,9 @@ extern "C" JNIEXPORT jobject  JNICALL   fromjava(lastglucose)(JNIEnv *env, jclas
 		return nullptr;
 		}
 	const jlong tim=poll->gettime();
-	const char *sensorid=hist->shortsensorname()->data();
+	const char *sensorid=hist->othershortsensorname()->data();
 	LOGGERTAG("strGlucose(%lld,%s,%s,%.1f)\n",(long long)tim,buf,sensorid,poll->ch);
-	const float rateofchange=( nonconvert<glucoselowest||nonconvert>glucosehighest)?NAN:poll->ch;
+	const float rateofchange=( nonconvert<glucoselowest||nonconvert>glucosehighest)?NAN:threshold(poll->ch);
 	return env->NewObject(item,iconstruct,tim,env->NewStringUTF(buf),env->NewStringUTF(sensorid),rateofchange);
        }
 

@@ -2,7 +2,7 @@
 As you see Juggluco consist according to Github for 1.2% out of Kotlin and according to Android Studio Build Analyzer tasks related to 
 Kotlin took 43.8% of the time to make the Debug version of Juggluco.
 # Juggluco
-An Android app that displays glucose values it receives via Bluetooth from Freestyle Libre 2 and 3 sensors.
+An Android app that displays glucose values it receives via Bluetooth from Freestyle Libre 0, 2, 2+ and 3 sensors and Sibionics sensors.
 
 Abbott's Freestyle Libre 2 and 3 sensors transmit every minute the perceived glucose value to the connected reader or smartphone. Juggluco displays this value on the smartphone in addition to low and high glucose alarms. Also with Libre 2 sensors you can know your current glucose value without scanning. Newer versions of Juggluco can also be used with Freestyle Libre 3 sensors, but all further remarks relate to Libre 2. See https://www.juggluco.nl/libre3 for more information about the use of Libre 3.  
 After using a sensor with Juggluco, you can still scan the sensor with Librelink or Freestyle Reader. Freestyle Reader's Bluetooth connection will no longer work with this sensor and if Bluetooth of Freestyle Reader isn't turned off, it will interfere with the Bluetooth connection of Juggluco with the sensors. Librelink can still continue to work with European Libre 2 sensors, if Juggluco runs on the same phone and already has a connection with the sensor. Librelink can't get a connection on it's own and it can result in connection loss of both apps that is only solved by killing Librelink and thereafter turning Bluetooth off and on and only restarting Librelink again after Juggluco receives again glucose from the sensor. So you shouldn't run them in parallel, when you want to rely on glucose alarms. Libre 3 sensors and US Libre 2 sensors can't be used in parallel.
@@ -40,12 +40,10 @@ cppFlags  " -DAPPID=\\\"$applicationId\\\" "
 should result in APPID being defined with the Application ID surrounded by quotes (""). This happens under Linux, but not Windows.
 Gradle and cmake should work independent of operation system, so it is their fault. And why do you use Microsoft Windows anyway?
 
-The following files need to be added to run Juggluco and can be found by unzipping a recent (>=5.1.14) Juggluco apk:
+The following files need to be added to build Juggluco and can be found by unzipping an Arm/Arm64/x86/x86_64 Juggluco apk from
 https://www.juggluco.nl/Juggluco/download.html
 
-
-libcalibrat2.so and libcalibrate.so in lib/* of the APK should be put in the corresponding directories in:
-
+libcalibrat2.so and libcalibrate.so in lib/* of the APK should be put in the corresponding directories (e.g. the libraries from armeabi-v7a of the apk should be put in armeabi-v7) in:    
 ./Common/src/main/jniLibs/x86_64/    
 ./Common/src/main/jniLibs/armeabi-v7a/   
 ./Common/src/main/jniLibs/x86/   
@@ -56,4 +54,9 @@ libcrl_dp.so  liblibre3extension.so  and libinit.so  in the corresponding direct
 ./Common/src/libre3/jniLibs/armeabi-v7a/   
 ./Common/src/libre3/jniLibs/x86/   
 ./Common/src/libre3/jniLibs/arm64-v8a/   
-   
+
+libnative-algorithm-jni-v113B.so  libnative-encrypy-decrypt-v110.so  libnative-struct2json.so libnative-algorithm-v1_1_3_B.so   libnative-sensitivity-v110.so in   
+./Common/src/mobileSi/jniLibs/armeabi-v7a/   
+./Common/src/mobileSi/jniLibs/arm64-v8a/
+
+

@@ -70,6 +70,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import tk.glucodata.nums.AllData;
 import tk.glucodata.nums.numio;
@@ -174,7 +175,7 @@ void setnotify(boolean on) {
 	}
 public void setunit(int unit)  {
 	Natives.setunit(unit);
-	Notify.mkunitstr(unit);
+	Notify.mkunitstr(app,unit);
 	}
 public void sendlabels() {
 	if(!isWearable) {
@@ -314,6 +315,7 @@ void initbluetooth(boolean usebluetooth,Context context,boolean frommain) {
 			else
 				Log.i(LOG_ID,"keeprunning not started="+keeprunning.started);
 			if(frommain)
+			//	explicit((MainActivity)context);
 				((MainActivity)context).askNotify();
 			}
 		}
@@ -356,21 +358,18 @@ private void initialize() {
 			connectivityManager.registerNetworkCallback((new NetworkRequest.Builder()).build(), new ConnectivityManager.NetworkCallback() {
 		@Override
 		public void onAvailable(Network network) {
-			hasonAvailable=true;
-		       Log.i(LOG_ID, "network: onAvailable(" + network+")");
-		       if(useWearos()) {
-				Natives.networkpresent();
-				MessageSender.sendnetinfo();
+			   hasonAvailable=true;
+		      Log.i(LOG_ID, "network: onAvailable(" + network+")");
+            if(useWearos()||hasip()) {
+                  Natives.networkpresent();
+     			      MessageSender.reinit();
+                   if(useWearos()) {
+                     MessageSender.sendnetinfo();
+					   Applic.scheduler.schedule(()-> { resetWearOS(); }, 20, TimeUnit.SECONDS);
+                       }
    		 		Applic.wakemirrors();
-				}
-		       else {
-			  if(hasip()) {
-				Natives.networkpresent();
-   		 		Applic.wakemirrors();
-				}
-			   }
-		
-		}
+			      }
+		      }
 		@Override
 		public void onUnavailable () {
 			Log.i(LOG_ID,"network: onUnavailable()");
@@ -397,14 +396,13 @@ private void initialize() {
 			}
 		@Override
 		public void onLost(Network network) {
-			var sender=tk.glucodata.MessageSender.getMessageSender();
-			if(sender!=null)
-				sender.nulltimes();
-		   Log.i(LOG_ID, "onLost(" + network+")");
-//		   if(hasonAvailable) 
+		      Log.i(LOG_ID, "onLost(" + network+")");
 			Natives.networkabsent();
+     			MessageSender.reinit();
+//		   if(hasonAvailable) 
 		       if(useWearos()) {
-   		 	Applic.wakemirrors();
+				Applic.wakemirrors();
+				Applic.scheduler.schedule(()-> { resetWearOS(); }, 20, TimeUnit.SECONDS);
 			}
 		}
 	    });
@@ -422,7 +420,9 @@ public static int initscreenwidth;
 static private final BroadcastReceiver minTimeReceiver = new BroadcastReceiver() {
     @Override
     public void onReceive(Context context, Intent intent) {
-    	Applic.app.domintime();
+        Applic app=(Applic) context.getApplicationContext();
+        app.initproc();
+    	app.domintime();
         }
 };
 void domintime() {
@@ -473,13 +473,13 @@ public static void initwearos(Context app) {
 	Log.i(LOG_ID,"before sendnetinfo");
 	MessageSender.sendnetinfo();
 	}*/
-void initproc() {
+boolean initproc() {
 	if(!initproccalled) {
 //		DisplayMetrics metrics= getResources().getDisplayMetrics();
 	//	initscreenwidth= metrics.widthPixels;
 	//	Log.i("Applic","initproc width="+initscreenwidth);
 		if(!numio.setlibrary(this))
-			return;
+			return false;
 		if(isWearable) {
 			if(Natives.getWifi())
 				UseWifi.usewifi();
@@ -487,7 +487,7 @@ void initproc() {
 		if(tk.glucodata.Applic.useWearos()) {
 			initwearos(this);
 			}
-		 needsnatives();
+		needsnatives();
 		Log.i("Applic","initproc width="+initscreenwidth);
 		libre3init.init();
 		SuperGattCallback.init(this);
@@ -499,6 +499,7 @@ void initproc() {
 		MessageSender.sendnetinfo();
 		Specific.start(this);
 		}
+	return true;
 	}
 
 public static void setbluetooth(Context activity,boolean on) {
@@ -582,14 +583,19 @@ boolean needsnatives() {
 	Notify.mkpaint();
 	return ret;
 	}
-
+   /*
+@Keep
+static void toCalendar(String name) {
+   MainActivity.tocalendarapp=true;
+    MainActivity.calendarsensor=name;
+   } */
 @Keep
 static boolean bluetoothEnabled() {	
 	return SensorBluetooth.bluetoothIsEnabled();
 	}
 static final boolean usewakelock=true;
 @Keep
-static void doglucose(String SerialNumber, int mgdl, float gl, float rate, int alarm, long timmsec,boolean wasblueoff,long sensorstartmsec) {
+static void doglucose(String SerialNumber, int mgdl, float gl, float rate, int alarm, long timmsec,boolean wasblueoff,long sensorstartmsec,long sensorptr) {
 	var wakelock=	usewakelock?(((PowerManager) app.getSystemService(POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Juggluco::Applic")):null;
 	if(wakelock!=null)
 		wakelock.acquire();
@@ -597,13 +603,24 @@ static void doglucose(String SerialNumber, int mgdl, float gl, float rate, int a
 		Applic.dontusebluetooth();
 		}
 	SuperGattCallback.dowithglucose( SerialNumber,  mgdl,  gl, rate,  alarm,  timmsec,sensorstartmsec);
+	if(!isWearable) {
+			if(sensorptr!=0L) {
+			 if(Build.VERSION.SDK_INT >= 28) {
+				HealthConnection.Companion.writeAll(sensorptr,SerialNumber);
+				}
+			   }
+		}
 	if(wakelock!=null)
 		wakelock.release();
 	}
 @Keep
 static boolean updateDevices() { //Rename to reset
 	if(tk.glucodata.SensorBluetooth.blueone!=null) {
-		 tk.glucodata.SensorBluetooth.blueone.resetDevices();
+		 if(tk.glucodata.SensorBluetooth.blueone.resetDevices()) {
+			var main=MainActivity.thisone;
+			if(main!=null)
+				main.finepermission();
+		 	}
 		 return true;
 		}
 	Log.e(LOG_ID,"tk.glucodata.SensorBluetooth.blueone==null");
@@ -617,11 +634,16 @@ static boolean updateDevices() { //Rename to reset
 	} */
 
 public static void wakemirrors() {
+	Log.i(LOG_ID,"wakemirrors");
 	MessageSender.sendwake();
 	Natives.wakebackup();
 	}
-
-static	void initbroadcasts() {
+@Keep 
+static public void resetWearOS() {
+	MessageSender.reinit();
+	wakemirrors();
+	}
+private static	void initbroadcasts() {
 
 	if(Natives.getinitVersion()<22) {
 		if(Natives.getinitVersion()<14) {
@@ -635,13 +657,9 @@ static	void initbroadcasts() {
 			}
 		//Natives.setinitVersion(22);
 		}
-	var pos=Natives.getfloatingPos( );
-	if(pos!=0) {
-		Floating.xview=pos&0xFFFF;
-		Floating.yview=pos>>16;
-		}
-
+	Floating.init();
 	XInfuus.setlibrenames();
+   EverSense.setreceivers();
 	JugglucoSend.setreceivers();
 	SendLikexDrip.setreceivers();
         }

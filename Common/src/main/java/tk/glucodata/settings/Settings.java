@@ -34,8 +34,11 @@ import static android.widget.Spinner.MODE_DIALOG;
 import static android.widget.Spinner.MODE_DROPDOWN;
 import static androidx.core.os.LocaleListCompat.getEmptyLocaleList;
 import static tk.glucodata.Applic.isWearable;
+import static tk.glucodata.Backup.getnumedit;
 import static tk.glucodata.Natives.getRTL;
+import static tk.glucodata.Natives.setthreshold;
 import static tk.glucodata.NumberView.avoidSpinnerDropdownFocus;
+import static tk.glucodata.RingTones.EnableControls;
 import static tk.glucodata.help.help;
 import static tk.glucodata.util.getbutton;
 import static tk.glucodata.util.getcheckbox;
@@ -48,6 +51,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.os.Build;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.View;
@@ -77,6 +81,7 @@ import tk.glucodata.Applic;
 import tk.glucodata.BuildConfig;
 import tk.glucodata.Floating;
 import tk.glucodata.GlucoseCurve;
+import tk.glucodata.HealthConnection;
 import tk.glucodata.LabelAdapter;
 import tk.glucodata.Layout;
 import tk.glucodata.Libreview;
@@ -90,7 +95,7 @@ import java.text.DecimalFormat;
 import java.util.Locale;
 
 public class Settings  {
-private final static boolean IWRU=false,SPANISH=false;
+private final static boolean RU=true,SPANISH=false;
 private final static String LOG_ID="Settings";
 MainActivity activity;
 
@@ -469,7 +474,7 @@ final private static String  codestr=String.valueOf(BuildConfig.VERSION_CODE);
 
 //static private final List<String> supportedlanguages= Arrays.asList("Language","be","de","en","fr","it","nl","pl","pt","uk","zh");
 //  static private final List<String> supportedlanguages= Arrays.asList("Language","be","de","en","fr","it","nl","pl","pt","uk");
-static private final List<String> supportedlanguages= IWRU?Arrays.asList("Language","be","de","en","es","fr","it","iw","nl","pl","pt","ru","uk"):(SPANISH?Arrays.asList("Language","be","de","en","es","fr","it","nl","pl","pt","uk"):Arrays.asList("Language","be","de","en","fr","it","nl","pl","pt","uk"));
+static private final List<String> supportedlanguages= RU?Arrays.asList("Language","be","de","en","fr","it","nl","pl","pt","ru","uk","zh"):(SPANISH?Arrays.asList("Language","be","de","en","es","fr","it","nl","pl","pt","uk","zh"):Arrays.asList("Language","be","de","en","fr","it","nl","pl","pt","uk","zh"));
 
 //static private final List<String> supportedlanguages= IWRU?Arrays.asList("Language","be","de","en","es","fr","it","iw","nl","pl","pt","ru","uk"):Arrays.asList("Language","be","de","en","es","fr","it","nl","pl","pt","uk");
 static private Spinner languagespinner(MainActivity context, int[] spinpos) {
@@ -514,7 +519,7 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 		  recreate(issaved);
                 });
 
-            mmolL.setText("mmol/L");
+            mmolL.setText(R.string.mmolL);
          mgdl = new RadioButton(context);
         mgdl.setOnClickListener(v-> {
 		((Applic) context.getApplication()).setunit(2);
@@ -522,7 +527,7 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 		  recreate(issaved);
         });
 
-        mgdl.setText("mg/dL");
+        mgdl.setText(R.string.mgdL);
         View[] row0 = isWearable?new View[]{new Space(context),mmolL, mgdl,new Space(context)}:new View[]{unitlabel, mmolL, mgdl};
 
         TextView graphlabel = new TextView(context);
@@ -583,22 +588,50 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 	globalscan.setText(R.string.startsapp);
 
         final CheckBox librelinkbroadcast=(!isWearable)?new CheckBox(context):null;
+
         final CheckBox libreview=(!isWearable)?new CheckBox(context):null;
         final CheckBox xdripbroadcast=new CheckBox(context);
+
+        final CheckBox everSensebroadcast=(!isWearable)?new CheckBox(context):null;
+
         final CheckBox jugglucobroadcast=new CheckBox(context);
+
+
 	xdripbroadcast.setText(R.string.xdripbroadcast);
 	xdripbroadcast.setChecked(Natives.getxbroadcast());
 	jugglucobroadcast.setText("Glucodata broadcast");
 	jugglucobroadcast.setChecked(Natives.getJugglucobroadcast());
 
 
+	final var healthconnect=(isWearable||Build.VERSION.SDK_INT <28) ?null:getcheckbox(context, "Health Connect", Natives.gethealthConnect());
+
+
 	final boolean wasxdrip= isWearable?false:Natives.getuselibreview();
 
+	final boolean usedlibrebroad= isWearable?false:Natives.getlibrelinkused();
 	if(!isWearable) {
 		libreview.setText(R.string.libreviewname);
 		libreview.setChecked(wasxdrip);
 		librelinkbroadcast.setText(R.string.sendtoxdrip);
-		librelinkbroadcast.setChecked(Natives.getlibrelinkused());
+
+		librelinkbroadcast.setChecked(usedlibrebroad);
+		everSensebroadcast.setText(R.string.everSensebroadcast);
+		everSensebroadcast.setChecked(Natives.geteverSensebroadcast());
+
+		 if(Build.VERSION.SDK_INT >= 28) {
+			healthconnect.setOnCheckedChangeListener( (buttonView,  isChecked) -> {
+					Natives.sethealthConnect(isChecked);
+					if(isChecked) {
+				   		MainActivity.tryHealth = 5;
+						HealthConnection.Companion.init(context);
+						}
+					else {
+				   		MainActivity.tryHealth = 0;
+						HealthConnection.Companion.stop();
+						}
+					}
+				);
+			}
 		}
 	final var hasnfc=MainActivity.hasnfc;
 	if(hasnfc)  {
@@ -654,9 +687,11 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 	var langspin=languagespinner(context,spinpos);
 	var startspinpos=spinpos[0];
 	Log.i(LOG_ID,"startspinpos="+startspinpos);
-/*	final var pastRTL= getRTL();
-	var checkRTL=getcheckbox(context, "RTL", pastRTL);
-	*/
+
+		final var threslabel=getlabel(context,R.string.threshold);
+
+		final var thresstring=float2string(Natives.getthreshold());
+		final var threshold=getnumedit(context,thresstring);
     ok.setOnClickListener(v->{
 		final int wasorient=Natives.getScreenOrientation();
 		if(!isWearable) {	
@@ -682,31 +717,39 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 
 
 		    if(blueused!=bluetooth.isChecked()) {
-			      Applic.setbluetooth(activity,!blueused);
+				 activity.setbluetoothmain( !blueused);
 				}
 	//	   Natives.setwaitwithenablestreaming(waitblue.isChecked());
 		  Natives.setfixatex(!fixatex.isChecked());
 		  Natives.setfixatey(!fixatey.isChecked());
 
+		if(!bluetooth.isChecked()&&Natives.backuphostNr( )<=0) {
+			Applic.argToaster(context, R.string.blueormirror,Toast.LENGTH_LONG);
+			}
 		  if(!isWearable) {
 			  if(diskey > 0) {
 				  final int setto = camera.isChecked() ? 1 : 2;
 				  if (diskey != setto) Natives.setcamerakey(setto);
 			  }
-			if(librelinkbroadcast.isChecked()!=wasxdrip)  {
-				if(!wasxdrip) {
-					if(!bluetooth.isChecked()&&Natives.backuphostNr( )<=0) {
-						Applic.argToaster(context, R.string.blueormirror,Toast.LENGTH_LONG);
-						}
-
+			if(librelinkbroadcast.isChecked()!=usedlibrebroad)  {
+				if(!usedlibrebroad) {
 					final var 	starttime= Natives.laststarttime();
 					if(starttime!=0L) {
-
 						tk.glucodata.XInfuus.sendSensorActivateBroadcast(context, Natives.lastsensorname(), starttime);
 						}
 					}
 				}
 			  }
+
+      var newthreshold=threshold.getText().toString();
+      if(!thresstring.equals(newthreshold)) {
+         float thres=str2float(newthreshold);
+         if(thres>0.8f||thres<0.0f) {
+               Applic.argToaster(context, "A threshold should 0.0 - 0.8",Toast.LENGTH_LONG);
+            }
+          else
+            setthreshold(thres);
+         }
 		 if(hasnfc) {
 			var was=Natives.nfcsound();
 			boolean moet=nfcsound.isChecked();
@@ -721,25 +764,11 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 		   context.poponback();
 		    hidekeyboard();
 		    finish();
-//		var rtl=checkRTL.isChecked();
-		if(tk.glucodata.Menus.on)
-			tk.glucodata.Menus.show(context);
+		if(tk.glucodata.Menus.on) tk.glucodata.Menus.show(context);
 		if(spinpos[0]!=startspinpos) {
-/*			Log.i(LOG_ID,"setpinpos[0]="+spinpos[0]+" getRTL()=="+pastRTL+" checked="+rtl);
-			Natives.setRTL(rtl);  */
-
-			var newlocale=(spinpos[0]==0)?getEmptyLocaleList():LocaleListCompat.forLanguageTags(supportedlanguages.get(spinpos[0]));
-			AppCompatDelegate.setApplicationLocales(newlocale);
-			}
-/*		else {
-			Log.i(LOG_ID,"getRTL()=="+pastRTL+" checked="+rtl);
-			if(rtl!=pastRTL) {
-				Natives.setRTL(rtl); 
-				Intent intent = context.getIntent();
-				context.finish();
-				context.startActivity(intent);
-				}
-			} */
+            var newlocale=(spinpos[0]==0)?getEmptyLocaleList():LocaleListCompat.forLanguageTags(supportedlanguages.get(spinpos[0]));
+            AppCompatDelegate.setApplicationLocales(newlocale);
+            }
 			});
 
 	Layout[] thelayout=new Layout[1];
@@ -762,14 +791,16 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 	View[][] views;
 	final String advhelp=isWearable?null:Natives.advanced();
 		Button display=isWearable?getbutton(context,context.getString(R.string.display)):null;
+	       var fixed=getcheckbox(context,R.string.clampnow,Natives.getcurrentRelative());
+		fixed.setOnCheckedChangeListener( (buttonView,  isChecked) -> Natives.setcurrentRelative(isChecked));
 	if(isWearable) {
 
-	       var uploader=getbutton(context,"Uploader");
+	       var uploader=getbutton(context,R.string.uploader);
 	       var floatconfig=getbutton(context,R.string.floatglucoseshort);
 
 	       floatconfig.setOnClickListener(v-> tk.glucodata.FloatingConfig.show(context,thelayout[0]));
 		CheckBox floatglucose=new CheckBox(context);
-		floatglucose.setText("  " );
+		floatglucose.setText("      " );
 
 
 		floatglucose.setChecked(Natives.getfloatglucose());
@@ -777,41 +808,57 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 			View[] rowglu=new View[]{bluetooth};
 
 			View[] camornum=new View[] {alarmbut,numalarm};
-			views=new View[][]{new View[]{getlabel(context,R.string.unit)}, row0, row1,new View[]{scalelabel},new View[]{fixatex,fixatey}, row2,new View[]{levelleft},hasnfc?(new View[]{globalscan,nfcsound}):null, new View[]{xdripbroadcast},new View[]{jugglucobroadcast},new View[]{uploader},new View[]{floatconfig,floatglucose},camornum,rowglu,new View[]{colbut,display},new View[]{langspin},new View[]{cancel,ok},new View[] {getlabel(context,BuildConfig.BUILD_TIME)},new View[]{getlabel(context,BuildConfig.VERSION_NAME)},new View[]{getlabel(context,codestr) }};;
+			views=new View[][]{new View[]{getlabel(context,R.string.unit)}, row0, row1,new View[]{scalelabel},new View[]{fixatex,fixatey}, row2, new View[]{threslabel,threshold}, new View[]{levelleft},hasnfc?(new View[]{globalscan,nfcsound}):null, new View[]{xdripbroadcast},new View[]{jugglucobroadcast},new View[]{fixed,uploader},new View[]{floatconfig,floatglucose},camornum,rowglu,new View[]{colbut,display},new View[]{langspin},new View[]{cancel,ok},new View[] {getlabel(context,BuildConfig.BUILD_TIME)},new View[]{getlabel(context,BuildConfig.VERSION_NAME)},new View[]{getlabel(context,codestr) }};;
 	       uploader.setOnClickListener(v-> tk.glucodata.NightPost.config(context,thelayout[0]));
 		}
 	else {
 		View[] row8;
 		View[] row9;
+		var about=getbutton(context,R.string.aboutname);
+	       about.setOnClickListener(v-> tk.glucodata.GlucoseCurve.doabout(context));
 		if(advhelp!=null) {
 			advanced=new Button(context);
 			advanced.setText(R.string.advanced);
-			row9=new View[]{advanced,help,cancel,ok};
+			row9=new View[]{advanced,help,about,cancel,ok};
 			}
 		else {
-			row9=new View[]{help,cancel,ok};
+			row9=new View[]{help,about,cancel,ok};
 			}
 
+//      var oldxdrip=getbutton(context,"send old"); oldxdrip.setOnClickListener(v-> tk.glucodata.Natives.sendxdripold());
         	CheckBox showalways=new CheckBox(context);
 		showalways.setText(R.string.glucosestatusbar);
 		showalways.setChecked(Natives.getshowalways()) ;
 		showalways.setOnCheckedChangeListener( (buttonView,  isChecked) -> Notify.glucosestatus(isChecked) );
 	       var webserver=getbutton(context,R.string.webserver);
-	       var uploader=getbutton(context,"Uploader");
+	       var uploader=getbutton(context,R.string.uploader);
+	       var iob=getcheckbox(context,"IOB",Natives.getIOB());
 /*		var streamhistory=getcheckbox(context,R.string.streamhistory,Natives.getStreamHistory( ));
 		streamhistory.setOnCheckedChangeListener( (buttonView,  isChecked) -> Natives.setStreamHistory(isChecked) );*/
 	       var floatconfig=getbutton(context,R.string.floatglucose);
 
 
 	       floatconfig.setOnClickListener(v-> tk.glucodata.FloatingConfig.show(context,thelayout[0]));
+		final View[] librerow=
+		 (Build.VERSION.SDK_INT >= 28)? 
+			new View[]{showalways,healthconnect,libreview}
+			:
+			new View[]{showalways,libreview};
 		View[] rowglu=new View[]{ bluetooth,floatconfig,alarmbut};
 		row8=new View[]{changelabels,langspin,numalarm,colbut};
-		views=new View[][]{row0, row1,new View[]{scalelabel,fixatex,fixatey}, row2,new View[]{levelleft,camera,reverseorientation},
-		hasnfc?new View[]{nfcsound, globalscan}:null,
+		views=new View[][]{row0, row1,new View[]{scalelabel,fixatex,fixatey}, row2,new View[]{levelleft,threslabel,threshold,camera,reverseorientation},
 
-		new View[]{showalways,libreview,librelinkbroadcast},new View[]{xdripbroadcast ,jugglucobroadcast ,webserver,uploader }, rowglu,row8,row9};
+		hasnfc?new View[]{nfcsound, globalscan}:null,librerow,new View[] {librelinkbroadcast,everSensebroadcast, xdripbroadcast ,jugglucobroadcast},new View[] {webserver,iob,fixed,uploader }, rowglu,row8,row9};
 	       webserver.setOnClickListener(v-> tk.glucodata.Nightscout.show(context,thelayout[0]));
 	       uploader.setOnClickListener(v-> tk.glucodata.NightPost.config(context,thelayout[0]));
+		iob.setOnCheckedChangeListener( (buttonView,  isChecked) -> {
+				if(!Natives.setIOB(isChecked)) {
+					iob.setChecked(false);
+					EnableControls(thelayout[0],false);
+					tk.glucodata.help.help(R.string.IOB,context,l->EnableControls(thelayout[0],true) );
+					}
+				}
+			);
 		}
 
 	help.setFocusableInTouchMode(true);
@@ -845,9 +892,22 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 					}
 		    });
 
+		final boolean[] everSensenothing = {false};
+		everSensebroadcast.setOnCheckedChangeListener( (buttonView,  isChecked) -> {
+					if (!everSensenothing[0]) {
+						everSensenothing[0] = true;
+						everSensebroadcast.setChecked(!isChecked);
+						Broadcasts.seteverSensereceivers(context, lay, everSensebroadcast, everSensenothing);
+					}
+				}
+				);
 		if(advhelp!=null) {
 			advanced.setOnClickListener(v -> {
-				help(advhelp, (MainActivity) (v.getContext()));
+				EnableControls(thelayout[0],false);
+				help(advhelp, (MainActivity) (v.getContext()),l->
+					EnableControls(thelayout[0],true)
+					
+					);
 			});
 			}
 		}
@@ -861,6 +921,7 @@ private	void mksettings(MainActivity context,boolean[] issaved) {
 				}
 			}
 			);
+
 
 	final boolean[] juggluconothing = {false};
 	jugglucobroadcast.setOnCheckedChangeListener( (buttonView,  isChecked) -> {

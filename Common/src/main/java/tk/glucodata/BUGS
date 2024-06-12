@@ -1,9 +1,44 @@
+Use Bluetooth lijkt aan, maar is het niet in bluediag
+
+Value on watchface wordt te vroeg verwijderd.
+Oude gegevens maken dat sensor te oud is.
+Some wordt een Galaxy horloge niet Galaxy genoemd. Waardoor ze niet active only worden. Kan Galaxy aan iets anders herkend worden?
+Gaat nooit meer naar WIFI als messages worden aangezet. Messages wordt ook aangezet wanneer het niet functioneert.
+
+Bij wisselen wifi network, wordt verbinding horloge-telefoon verbroken. Reinit, sync doet het weer werken.
+
+Test bij nieuwe installatie. 
+The mirror connection didn't work. After changing the password it did, but earlier they already looked the same. Why?
+In Mirror Phone verdwijnt stream als eind uit beeld.
+Libre3 getservice in both onConnectionStateChange and onServiceDisc?
+[x] over System UI en Dark mode en te dicth bij Amounts
+
+Bij sluiten reminder wordt notificatie niet verwijderd.
+While compiling juggluco server -lz is added.
+Drukken op menu toont soms niets? Om is er geen menu?
+Verbinding vaak verbroken tussen horloge en telefoon.
+cors
+
+Regelmatig connectie problemen tussen Jugglucos' op verschillend devices na nieuwe modem.
+
+Verkeerde port wordt getoond bij Juggluco server when passive
+ 
+Vanaf bepaald tijdstip enkel zenden naar Nightscout?
+
+libreview staat uit, toch lijkt er contact gemaakt te worden.
+Text size headsize lijkt niet zo groot
+
+"Health connect" verder terug bij nieuwe sensor?
+
+Roep sync ergens aan in watchserver wanneer gevraagd wordt.
+	REMOVE sync bij enkel connectie
+
+
+No relevant changes: https://github.com/j-kaltes/Juggluco/compare/ecfb46b..678de7a
+
 Geen nieuw id in juggluco server
 What do com.google.android.gms.auth.api.signin and com.google.android.gms.dynamite in my app??
 
-
-Only give current and pebble when not too old?
-Geef sensor id inplaats van, Juggluco in webserver?
 
 Beperk aantal connecties webserver?
 Resend data wordt niet doorgezonden.
@@ -19,7 +54,7 @@ Reinit sync maakt dat WearOS weer glucose waarden ontvangt. Kan dat niet automat
 - redraw of app.
 
 
-Verwijderen van de verkeerde notificatie? Deleteverwijdered Foreground service notification.
+Verwijderen van de verkeerde notificatie? Delete verwijdered Foreground service notification.
 Starthistory? Moet niet al verkregen data terugzenden. 
 - Gelijk zetten met Stream vanaf zelfde tijd.
 - Ook zetten bij wisseling watch.

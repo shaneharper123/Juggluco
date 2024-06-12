@@ -66,9 +66,6 @@ public class MyGattCallback extends SuperGattCallback {
 	public MyGattCallback(String SerialNumber, long dataptr) {
 		super(SerialNumber,dataptr,Natives.getsensorgen(dataptr));
 		Log.d(LOG_ID, "MyGattCallback(..)");
-	//	this.dataptr = dataptr;
-	//	mActiveDeviceAddress = Natives.getDeviceAddress(dataptr);
-		
 	}
 
 
@@ -185,6 +182,10 @@ void reconnect() {
 						if(!stop) {
 							bluetoothGatt.connect();
 							}
+						else {
+							bluetoothGatt.close();
+							mBluetoothGatt = null;
+							}
 						}
 					conphase = 0;
 				}
@@ -220,7 +221,7 @@ void reconnect() {
 					if (sensorgen == 2) {
 						Log.i(LOG_ID, "Using security generation 2");
 						conphase = 1;
-						boolean isEnabled = enableNotification(BLELogincharacteristic);
+						boolean isEnabled = asknotification(BLELogincharacteristic);
 						Log.i(LOG_ID, "Enabled Security notification: " + isEnabled);
 						return true;
 					}
@@ -304,7 +305,7 @@ characteristic	BluetoothGattCharacteristic: Characteristic that was written to t
 status	int: The result of the write operation BluetoothGatt#GATT_SUCCESS if the operation succeeds.
 */
 	boolean justenablednotification = false;
-
+private   boolean failedbefore=false;
 	@Override
 	public void onCharacteristicWrite(BluetoothGatt bluetoothGatt, BluetoothGattCharacteristic bluetoothGattCharacteristic, int status) {
 		Log.d(LOG_ID, bluetoothGatt.getDevice().getAddress() + " onCharacteristicWrite, status:" + status + " UUID:" + bluetoothGattCharacteristic.getUuid().toString());
@@ -343,10 +344,16 @@ status	int: The result of the write operation BluetoothGatt#GATT_SUCCESS if the 
 				wrotepass[1] = tim;
 				handshake = "Enabling notification failed";
 				Log.i(LOG_ID, SerialNumber + " onCharacteristicWrite:  enabling notification failed");
+            if(failedbefore) {
+               Natives.resetbluetooth(dataptr);
+               failedbefore=false;
+               }
+            else failedbefore=true;
 				bluetoothGatt.disconnect();
 				return;
 			}
 
+         failedbefore=false;
 			conphase = 4;
 			wrotepass[0] = tim;
 			pack1 = false;
@@ -589,7 +596,7 @@ private	void oldonCharacteristicChanged(byte[] value) {
 	}
 
 	int tovalue;
-
+/*
 static	public final boolean enableNotification(BluetoothGatt bluetoothGatt,BluetoothGattCharacteristic bluetoothGattCharacteristic) {
 	bluetoothGatt.setCharacteristicNotification(bluetoothGattCharacteristic, true);
 	BluetoothGattDescriptor descriptor = bluetoothGattCharacteristic.getDescriptor(mCharacteristicConfigDescriptor);
@@ -598,7 +605,7 @@ static	public final boolean enableNotification(BluetoothGatt bluetoothGatt,Bluet
 	}
 private final boolean enableNotification(BluetoothGattCharacteristic bluetoothGattCharacteristic) {
 	return enableNotification(mBluetoothGatt, bluetoothGattCharacteristic);
-	}
+	} */
 
 	public final void phase3(byte[] value) {
 		int i;
@@ -628,7 +635,7 @@ private final boolean enableNotification(BluetoothGattCharacteristic bluetoothGa
 			conphase = 4;
 
             mBLELoginHandler = () -> {
-                if (!enableNotification(CompositeRawDatacharacteristic)) {
+                if (!asknotification(CompositeRawDatacharacteristic)) {
                     Log.e(LOG_ID, SerialNumber+" phase3 retry=" + BLELoginposted + " enableNotification failed");
                     handshake = "Enable CompositeRawDatacharacteristic failed";
                     wrotepass[1] = System.currentTimeMillis();
@@ -720,6 +727,14 @@ public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status)  {
 	if(status==GATT_SUCCESS) {
 		readrssi=rssi;
 		}
+	}
+
+@Override
+public boolean matchDeviceName(String deviceName,String address) {
+	if(!deviceName.startsWith("ABBOTT")) {
+		return false;
+		}
+	return SerialNumber.equals(deviceName.substring(6));
 	}
 }
 

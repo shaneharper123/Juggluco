@@ -85,6 +85,7 @@ jugglucotext uktext {
 	.lastscanned="Останнє сканування:",
 	.laststream="Останній потік:",
 	.sensorends="Датчик закінчується: ",
+	.sensorexpectedend="Expected to end: ",
 #ifndef WEAROS
 	.newamount="Нова сума",
 	.averageglucose="Середня глюкоза: ",
@@ -101,7 +102,11 @@ jugglucotext uktext {
 		"Дивитися",
 		"Датчик",
 		"Налашт.",
+#if defined(SIBIONICS)
+"Sibionics",
+#else
 		"Аб Juggluco",
+#endif
 		"Закрити",
 		"Стоп тривоги"
 		},
@@ -174,8 +179,9 @@ jugglucotext uktext {
 .Falling="Падіння",
 .Stable="Змінюється повільно",
 .Rising="Підйом",
-.RisingQuickly="Швидко піднімається"
+.RisingQuickly="Швидко піднімається",
 #endif
+.receivingpastvalues="Receiving old values"
 		}
 
 

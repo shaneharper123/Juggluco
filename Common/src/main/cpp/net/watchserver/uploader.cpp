@@ -71,14 +71,20 @@ static void makeuploadurls(JNIEnv *env) {
 	}
 
 extern std::string sha1encode(const char *secret, int len);
-void makeuploadsecret(JNIEnv *env) {
-		if(jnightuploadsecret)
-			env->DeleteGlobalRef(jnightuploadsecret);
+static void makeuploadsecret(JNIEnv *env) {
+		const bool useV3=settings->data()->nightscoutV3;
+		if(useV3) {
+			jnightuploadsecret=nullptr;
+			}
+		else  {
+			if(jnightuploadsecret)
+				env->DeleteGlobalRef(jnightuploadsecret);
 
-		const char *secret=settings->data()->nightuploadsecret;
-		std::string encoded=sha1encode(secret,strlen(secret));
-		auto local=env->NewStringUTF(encoded.data());
-		jnightuploadsecret=  (jstring)env->NewGlobalRef(local);
+			const char *secret=settings->data()->nightuploadsecret;
+			std::string encoded=sha1encode(secret,strlen(secret));
+			auto local=env->NewStringUTF(encoded.data());
+			jnightuploadsecret=  (jstring)env->NewGlobalRef(local);
+			}
 		}
 bool inituploader(JNIEnv *env) {
 	if(!settings->data()->nightuploadon)  
@@ -188,8 +194,8 @@ static bool uploadCGM3() {
 		settings->data()->nightsensor=sensors->firstafter(mintime);
 	int startsensor= settings->data()->nightsensor;
 
-	constexpr const auto twoweeks=15*24*60*60;
-	time_t old=nu-twoweeks;
+/*	constexpr const auto twoweeks=15*24*60*60;
+	time_t old=nu-twoweeks; */
 
 	int newstartsensor=startsensor;
 	for(int sensorid=last;sensorid>=startsensor;--sensorid) {
@@ -230,7 +236,8 @@ extern char * writev3entry(char *outin,const ScanData *val, const sensorname_t *
 					newstartsensor=sensorid;
 				continue;
 				}
-			if(sens->getstarttime()>old) 
+//			if(sens->getstarttime()>old) 
+			if(sens->getmaxtime()>nu) 
 				newstartsensor=sensorid;
 
 			}
@@ -251,9 +258,9 @@ static bool uploadCGM() {
 		settings->data()->nightsensor=sensors->firstafter(mintime);
 	int startsensor= settings->data()->nightsensor;
 	constexpr const int itemsize=350;
-
+/*
 	constexpr const auto twoweeks=15*24*60*60;
-	time_t old=nu-twoweeks;
+	time_t old=nu-twoweeks; */
 
 	int newstartsensor=startsensor;
 	for(int sensorid=last;sensorid>=startsensor;--sensorid) {
@@ -307,7 +314,8 @@ constexpr const int			maxitems=10440;
 						}
 					}
 				}
-			if(sens->getstarttime()>old) 
+	//		if(sens->getstarttime()>old) 
+			if(sens->getmaxtime()>nu) 
 				newstartsensor=sensorid;
 
 			}

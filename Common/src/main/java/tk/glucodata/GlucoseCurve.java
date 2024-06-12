@@ -49,6 +49,8 @@ import java.util.Calendar;
 
 import androidx.annotation.Keep;
 import androidx.annotation.UiThread;
+
+import tk.glucodata.nums.numio;
 import tk.glucodata.settings.Settings;
 
 import static android.util.TypedValue.COMPLEX_UNIT_PX;
@@ -58,6 +60,7 @@ import static java.lang.Math.abs;
 import static java.lang.System.currentTimeMillis;
 import static tk.glucodata.Applic.isWearable;
 import static tk.glucodata.Applic.usedlocale;
+import static tk.glucodata.BuildConfig.SiBionics;
 import static tk.glucodata.Natives.turnoffalarm;
 import static tk.glucodata.NumberView.geteditview;
 import static tk.glucodata.NumberView.geteditwearos;
@@ -161,7 +164,7 @@ void setminheight(View[] views,int minheight) {
 	}
 //void getnumcontrol(MainActivity activity,int width,int height) {
 void getnumcontrol(MainActivity activity) {
-
+   Log.i(LOG_ID,"getnumcontrol start");
 	if(numcontrol==null) {
            ImageButton first=new ImageButton(activity);
            first.setImageResource( R.drawable.baseline_first_page_24);
@@ -270,6 +273,7 @@ void getnumcontrol(MainActivity activity) {
 		else
 			 requestRender();
 		 });
+   Log.i(LOG_ID,"getnumcontrol end");
 	}
 
     void showkeyboard(Activity context) {
@@ -465,7 +469,10 @@ void startlibrelink(String lang) {
                                 case 5: {
 					if(!isWearable) {
 						MainActivity activity = (MainActivity) getContext();
-						doabout(activity);
+						if(SiBionics==1)
+							Sibionics.scan(activity);
+						else
+							doabout(activity);
 						}
 
 
@@ -572,13 +579,18 @@ void startlibrelink(String lang) {
 			 	return;
 			 	}
 			else {
-			    MainActivity activity = (MainActivity) getContext();
-			    numberview.addnumberview(activity,hitptr);
-			    if(!Natives.staticnum()) {
-				    if(!smallScreen) {
-						showkeyboard(activity);
-						}
+				 MainActivity activity = (MainActivity) getContext();
+				if(Natives.staticnum()&&hitptr== numio.newhit) {
+					help.help(R.string.staticnum,activity);
 					}
+				else {
+				    numberview.addnumberview(activity,hitptr);
+				    if(!Natives.staticnum()) {
+					    if(!smallScreen) {
+							showkeyboard(activity);
+							}
+						}
+				    }
 			    }
 			    }
                 	}
@@ -1047,8 +1059,8 @@ private Layout getsearchlayout(MainActivity context) {
 
 	Layout layout=new Layout(context,(lay, w, h)->{
 	int width=GlucoseCurve.getwidth();
-if(!smallScreen) {
 	int height=GlucoseCurve.getheight();
+if(!smallScreen) {
 //	boolean rtl=Natives.getRTL();
 	if(height>h&&width>w) {
 		   if(width>height) {
@@ -1070,9 +1082,11 @@ if(!smallScreen) {
 
 			int half=height/2;
 			int af=(half-h)/4;
-			    lay.setX((width - w)/2);
+			 var xpos= (width - w)/2;
+			    lay.setX(xpos);
 			    lay.setY(half - h-af);
 
+         Log.i(LOG_ID,"search h="+h+" height="+height+" w="+w+" width="+width+" posx="+xpos);
 			}
 		}
 	else {
@@ -1082,12 +1096,11 @@ if(!smallScreen) {
 		}
 		}
 	else {
-		lay.setY((int)((width-w)/2.5f));
-		if(width>w) {
-			    lay.setX((width - w)/2);
-			}
-		else
-			    lay.setX(0);
+      final var ypos=(int)((height-h)/2.5f);
+		lay.setY(ypos);
+      final var xpos=width>w?(width - w)/2:0;
+		lay.setX(xpos);
+      Log.i(LOG_ID,"smallScreen search h="+h+" height="+height+" w="+w+" width="+width+" posx="+xpos+" posy="+ypos);
 		}
 		return new int[] {w,h};
 		},buttonline,glucoseline, timeline,goline);
@@ -1138,7 +1151,7 @@ public void onResume() {
       super.onPause();
     }
 
-void	doabout(MainActivity activity) {
+static public void	doabout(MainActivity activity) {
 if(!isWearable) {
 	String about=activity.getString(R.string.about)+"<p>Version Code: "+ BuildConfig.VERSION_CODE+"<br>Version Name: "+ 
     	BuildConfig.VERSION_NAME +"<br>"+Natives.getCPUarch()+"<br>Build time: "+ BuildConfig.BUILD_TIME +"</p>";

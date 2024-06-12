@@ -1,12 +1,17 @@
 #include <sys/prctl.h>
+#include "curve.h"
 #include <jni.h>
 #include <string_view>
 #include <string>
 #include "share/logs.h"
+#include "sensoren.h"
 #include "fromjava.h"
 //#include "curve.h"
 //#include "nanovg_gl.h"
 //#include "nanovg_gl_utils.h"
+//#define OLDEVERSENSE
+
+extern Sensoren *sensors;
 #define NANOVG_GLES2_IMPLEMENTATION
 
 extern "C" JNIEXPORT jint JNICALL fromjava(openglversion)(JNIEnv* env, jclass obj) {
@@ -60,6 +65,17 @@ extern "C" JNIEXPORT jlong JNICALL fromjava(sensorends)(JNIEnv* env, jclass obj)
 	return  lastsensorends() ;
 	}
 
+
+extern "C" JNIEXPORT jstring JNICALL   fromjava(getUsedSensorName)(JNIEnv *envin, jclass cl) {
+	if(const SensorGlucoseData *sens=sensors->getSensorData();sens&&sens->pollcount()) {
+		const char *name=sens->shortsensorname()->data();
+		LOGGER("getUsedSensorName()=%s\n",name);
+		return envin->NewStringUTF(name);
+		}
+	return nullptr;
+	}
+
+
 extern int badscanMessage(int kind);
 extern "C" JNIEXPORT jint JNICALL fromjava(badscan)(JNIEnv* env, jclass obj,jint kind) {
 	return badscanMessage( kind) ;
@@ -82,11 +98,11 @@ static jmethodID summaryready=nullptr;
 	#ifdef  WEAROS
 static jmethodID showsensorinfo=nullptr;
 #endif
-jmethodID  jdoglucose=nullptr, jupdateDevices=nullptr, jbluetoothEnabled=nullptr,jspeak=nullptr;
+jmethodID  jdoglucose=nullptr, jupdateDevices=nullptr, jbluetoothEnabled=nullptr,jspeak=nullptr, jresetWearOS=nullptr;
 jclass JNIApplic;
-#ifdef OLDXDRIP
+#ifdef OLDEVERSENSE
 #ifndef  WEAROS
-jclass XInfuus;
+jclass EverSense;
 jmethodID  sendGlucoseBroadcast=nullptr;
 #endif
 #endif
@@ -107,10 +123,10 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 const jclass cl=env->FindClass("tk/glucodata/GlucoseCurve");
 if(!cl) {
 	summaryready=nullptr;
-	LOGSTRING("Can't find GlucoseCurve\n");
+	LOGAR("Can't find GlucoseCurve");
 	}
 else {
-	LOGSTRING("found GlucoseCurve\n");
+	LOGAR("found GlucoseCurve");
 	summaryready=env->GetMethodID(cl,"summaryready","()V");
 	#ifdef  WEAROS
 	showsensorinfo=env->GetMethodID(cl,"showsensorinfo","(Ljava/lang/String;)V");
@@ -125,39 +141,47 @@ const static jclass cl=env->FindClass("tk/glucodata/Applic");
 if(cl) {
 	JNIApplic = (jclass)env->NewGlobalRef(cl);
 	env->DeleteLocalRef(cl);
-	if(!(jdoglucose=env->GetStaticMethodID(JNIApplic,"doglucose","(Ljava/lang/String;IFFIJZJ)V"))) {
-		LOGSTRING(R"(GetStaticMethodID(JNIApplic,"doglucose","(Ljava/lang/String;IFFIJZJ)V"))) failed)" "\n");
+	if(!(jdoglucose=env->GetStaticMethodID(JNIApplic,"doglucose","(Ljava/lang/String;IFFIJZJJ)V"))) {
+		LOGAR(R"(GetStaticMethodID(JNIApplic,"doglucose","(Ljava/lang/String;IFFIJZJJ)V"))) failed)" "");
 		}
 	if(!(jupdateDevices=env->GetStaticMethodID(JNIApplic,"updateDevices","()Z"))) {
-		LOGSTRING(R"(jupdateDevices=env->GetStaticMethodID(JNIApplic,"updateDevices","()Z") failed)" "\n");
+		LOGAR(R"(jupdateDevices=env->GetStaticMethodID(JNIApplic,"updateDevices","()Z") failed)" "");
 		}
 	if(!(jbluetoothEnabled=env->GetStaticMethodID(JNIApplic,"bluetoothEnabled","()Z"))) {
-		LOGSTRING(R"(jbluetoothEnabled=env->GetStaticMethodID(JNIApplic,"bluetoothEnabled","()Z") failed)" "\n");
+		LOGAR(R"(jbluetoothEnabled=env->GetStaticMethodID(JNIApplic,"bluetoothEnabled","()Z") failed)" "");
 		}
 	if(!(jspeak=env->GetStaticMethodID(JNIApplic,"speak","(Ljava/lang/String;)V"))) {
-		LOGSTRING(R"(jspeak=env->GetStaticMethodID(JNIApplic,"speak","(Ljava/lang/String;)V") failed)" "\n");
+		LOGAR(R"(jspeak=env->GetStaticMethodID(JNIApplic,"speak","(Ljava/lang/String;)V") failed)" "");
 		}
+	if(!(jresetWearOS=env->GetStaticMethodID(JNIApplic,"resetWearOS","()V"))) {
+		LOGAR(R"(jresetWearOS=env->GetStaticMethodID(JNIApplic,"resetWearOS","()V") failed)" "");
+		}
+      /*
+	if(!(jtoCalendar=env->GetStaticMethodID(JNIApplic,"toCalendar","()V"))) {
+		LOGAR(R"(jtoCalendar=env->GetStaticMethodID(JNIApplic,"toCalendar","(Ljava/lang/String;)V") failed)" "");
+		} */
 	}
 else {
-	LOGSTRING(R"(FindClass("tk/glucodata/Applic") failed)" "\n");
+	LOGAR(R"(FindClass("tk/glucodata/Applic") failed)" "");
 	}
 }
 
 
-#ifdef OLDXDRIP
+#ifdef OLDEVERSENSE
 #ifndef  WEAROS
 {
-const static jclass cl=env->FindClass("tk/glucodata/XInfuus");
+const static jclass cl=env->FindClass("tk/glucodata/EverSense");
 if(cl) {
 
-	XInfuus = (jclass)env->NewGlobalRef(cl);
+	EverSense = (jclass)env->NewGlobalRef(cl);
 	env->DeleteLocalRef(cl);
-	if(!(sendGlucoseBroadcast=env->GetStaticMethodID(XInfuus,"sendGlucoseBroadcast","(Ljava/lang/String;DFJ)V"))) {
-		LOGSTRING(R"(GetStaticMethodID(XInfuus,"sendGlucoseBroadcast","(Ljava/lang/String;DFJ)V()) failed)" "\n");
+//	broadcastglucose(int mgdl, float rate, long timmsec)
+	if(!(sendGlucoseBroadcast=env->GetStaticMethodID(EverSense,"broadcastglucose","(IFJ)V"))) {
+		LOGAR(R"(GetStaticMethodID(EverSense,"broadcastglucose","(IFJ)V") failed)" "");
 		}
 	}
 else {
-	LOGSTRING(R"(FindClass("tk/glucodata/XInfuus") failed)" "\n");
+	LOGAR(R"(FindClass("tk/glucodata/EverSense") failed)" "");
 	}
 	}
 #endif
@@ -187,7 +211,7 @@ initlibreviewjni(env);
 jinitmessages(env) ;
 #endif
 
-	LOGSTRING("end JNI_OnLoad\n");
+	LOGAR("end JNI_OnLoad");
 	 return JNI_VERSION_1_6;
 }
 class attach {
@@ -215,29 +239,37 @@ JNIEnv *getenv() {
 bool bluetoothEnabled() {
     return   getenv()->CallStaticBooleanMethod(JNIApplic,jbluetoothEnabled);
     }
-void telldoglucose(const char *name,int32_t mgdl,float glu,float rate,int alarm,int64_t mmsec,bool wasnoblue,int64_t startmsec) {
+void telldoglucose(const char *name,int32_t mgdl,float glu,float rate,int alarm,int64_t mmsec,bool wasnoblue,int64_t startmsec,intptr_t sensorptr) {
 	jstring sname= getenv()->NewStringUTF(name);
-	getenv()->CallStaticVoidMethod(JNIApplic,jdoglucose,sname,mgdl,glu,rate,alarm,mmsec,wasnoblue,startmsec);
+	getenv()->CallStaticVoidMethod(JNIApplic,jdoglucose,sname,mgdl,glu,rate,alarm,mmsec,wasnoblue,startmsec,sensorptr);
 	getenv()->DeleteLocalRef(sname);
 	}
 
 bool updateDevices() {
     if(!jupdateDevices)  {
-    	LOGSTRING("jupdateDevices==null\n");
+    	LOGAR("jupdateDevices==null");
 
     		return false;
 		}
+     sensors->deletelast();
     return   getenv()->CallStaticBooleanMethod(JNIApplic,jupdateDevices);
+    }
+void resetWearOS() {
+    if(!jresetWearOS)  {
+    	LOGAR("jresetWearOS==null");
+		}
+     else
+        getenv()->CallStaticVoidMethod(JNIApplic,jresetWearOS);
     }
 void visiblebutton() {
 	if(glucosecurve) {
 		if(summaryready)  {
 			JNIEnv *env =getenv(); 
-			LOGSTRING("call summaryready\n");
+			LOGAR("call summaryready");
 			env->CallVoidMethod(glucosecurve,summaryready);
 			}
 		else
-			LOGSTRING("didn't find GlucoseCurve\n");
+			LOGAR("didn't find GlucoseCurve");
 		}
 	}
 
@@ -246,17 +278,17 @@ void callshowsensorinfo(const char *text) {
 	if(glucosecurve) {
 		if(showsensorinfo)  {
 			JNIEnv *env =getenv(); 
-			LOGSTRING("call showsensorinfo\n");
+			LOGAR("call showsensorinfo");
 			env->CallVoidMethod(glucosecurve,showsensorinfo,env->NewStringUTF(text));
 			}
 		else
-			LOGSTRING("didn't find GlucoseCurve\n");
+			LOGAR("didn't find GlucoseCurve");
 		}
 	}
 #endif
 
 void render() {
-	LOGSTRING("Render\n");
+	LOGAR("Render");
 	if(glucosecurve) {
 		struct method {
 		   jmethodID requestRendermeth;
@@ -294,8 +326,34 @@ extern "C" JNIEXPORT void JNICALL fromjava(setlocale)(JNIEnv *env, jclass clazz,
 		}
 	}
 
+extern uint32_t starttime;
+
+extern void setdiffcurrent();
+
+extern int diffcurrent;
+extern bool nowclamp;
+bool nowclamp=false;
+static void setdiffcurrent(bool val) {
+   nowclamp=val;
+   /*
+	if(val) {
+		setdiffcurrent();
+		}
+	else 
+		diffcurrent=0; */
+	}
+extern "C" JNIEXPORT void  JNICALL   fromjava(setcurrentRelative)(JNIEnv *env, jclass cl,jboolean val) {
+	settings->data()->currentRelative=val;
+	setdiffcurrent(val);
+	}
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getcurrentRelative)(JNIEnv *env, jclass cl) {
+	return settings->data()->currentRelative;
+	}
+
+
 extern std::string_view libdirname;
 extern int setfilesdir(const std::string_view filesdir,const char *country) ;
+//#include "curve/shell.h"
 extern "C" JNIEXPORT int JNICALL fromjava(setfilesdir)(JNIEnv *env, jclass clazz, jstring dir,jstring jcountry,jstring nativedir) {
 	{
 	size_t nativedirlen= env->GetStringUTFLength( nativedir);
@@ -320,12 +378,15 @@ extern "C" JNIEXPORT int JNICALL fromjava(setfilesdir)(JNIEnv *env, jclass clazz
 		strcpy( country,"GB");
 		country=(char *)"\0";
 		}
-	return setfilesdir({filesdirbuf,filesdirlen},country);
+	auto res= setfilesdir({filesdirbuf,filesdirlen},country);
+
+	return res;
 	}
 void calccurvegegs();
 
 extern "C" JNIEXPORT void JNICALL fromjava(calccurvegegs)(JNIEnv *env, jclass clazz) {
 	calccurvegegs();
+	setdiffcurrent(settings->data()->currentRelative);
 	}
 
 extern void flingX(float vol);
@@ -427,7 +488,6 @@ extern "C" JNIEXPORT jlong JNICALL fromjava(mkhitptr) (JNIEnv *env, jclass clazz
 extern "C" JNIEXPORT void JNICALL fromjava(freehitptr)(JNIEnv *env, jclass thiz,jlong ptr) {
 	delete reinterpret_cast<NumHit *>(ptr);
 	}
-extern uint32_t starttime;
 extern int duration;
 extern "C" JNIEXPORT jlong JNICALL fromjava(getstarttime) (JNIEnv *env, jclass clazz) {
 	return static_cast<jlong>(starttime)*1000l;
@@ -474,6 +534,7 @@ extern "C" JNIEXPORT jint JNICALL fromjava(search) (JNIEnv *env, jclass clazz,ji
 	}
 
 void begrenstijd();
+extern void setstarttime(uint32_t);
 extern "C" JNIEXPORT void JNICALL fromjava(movedate) (JNIEnv *env, jclass clazz,jlong milli,jint year,jint month,jint day) {
 	time_t tim=milli/1000l;
 	struct tm		stm{};
@@ -482,7 +543,7 @@ extern "C" JNIEXPORT void JNICALL fromjava(movedate) (JNIEnv *env, jclass clazz,
 	stm.tm_mon=month;
 	stm.tm_mday=day;
 	time_t timto=mktime(&stm);
-	starttime+=uint32_t((int64_t)timto-(int64_t)tim);
+	setstarttime(starttime+uint32_t((int64_t)timto-(int64_t)tim));
 	begrenstijd() ;
 	};
 void prevdays(int nr);
@@ -543,7 +604,6 @@ extern "C" JNIEXPORT jlong JNICALL fromjava(openNums)(JNIEnv *env, jclass thiz,j
 	LOGAR("end openNums");
 	return res;
 	}
-#include "curve.h"
 extern "C" JNIEXPORT void JNICALL fromjava(setlastcolor)(JNIEnv *env, jclass thiz,jint color) {
 	LOGGER("lasttouchedcolor=%d color=%x\n",lasttouchedcolor,color);
 	if(lasttouchedcolor<0)
@@ -603,6 +663,15 @@ void speak(const char *message) {
 		LOGAR("speak(null)");
 		}
 	}
+   /*
+void toCalendar(const char *message) {
+	if(message)
+		getenv()->CallStaticVoidMethod(JNIApplic,jtoCalendar,getenv()->NewStringUTF(message));
+	else {
+		LOGAR("toCalendar(null)");
+		}
+	} */
+
 
 #ifndef WEAROS
 extern bool speakout;
@@ -644,7 +713,7 @@ extern "C" JNIEXPORT jlong JNICALL fromjava(saylastglucose)(JNIEnv *env, jclass 
 		if(!poll||!poll->valid()) {
 			return 0L;
 			}
-		if(poll->gettime()<(nu-60*3)) {
+		if(poll->gettime()<(nu-maxbluetoothage)) {
 			return poll->gettime()*1000L;
 			}
 		
@@ -666,7 +735,7 @@ extern "C" JNIEXPORT jlong JNICALL fromjava(saylastglucose)(JNIEnv *env, jclass 
 		}
 	return -1L;
 	}
-
+//MENUS functions:
 extern "C" JNIEXPORT jboolean JNICALL fromjava(getsystemui)(JNIEnv *env, jclass thiz) {
 	return showui;
 	}
@@ -677,10 +746,9 @@ extern "C" JNIEXPORT void JNICALL fromjava(setsystemui)(JNIEnv *env, jclass thiz
 
 extern "C" JNIEXPORT void JNICALL fromjava(settonow)(JNIEnv *env, jclass thiz) {
 	auto max=time(nullptr);
-	starttime=max-duration*3/5;
+	setstarttime(max-duration*3/5);
 	}
 
-#include "sensoren.h"
 
 extern struct lastscan_t scantoshow;
 extern "C" JNIEXPORT jboolean JNICALL fromjava(showlastscan)(JNIEnv *env, jclass thiz) {

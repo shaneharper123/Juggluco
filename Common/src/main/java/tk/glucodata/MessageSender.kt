@@ -46,7 +46,8 @@ class MessageSender(val activity: Context):CapabilityClient.OnCapabilityChangedL
     private val nodeClient by lazy { Wearable.getNodeClient(activity) }
     public val localnodeall by lazy { Tasks.await(nodeClient.localNode) }
     public val localnode by lazy { localnodeall.id }
-    public val galaxywatch by lazy { isGalaxy(localnodeall) }
+    public val galaxywatch by lazy {
+        isGalaxy(localnodeall) }
 
     var nodes: Set<Node>? = null
     var nexttimes:LongArray?=null
@@ -253,7 +254,7 @@ companion object {
     const val BLUETOOTH_PATH = "/bluetooth"
     const val DATA_PATH = "/data"
     const val MESSAGES_PATH = "/messages"
-    val scope = CoroutineScope(Dispatchers.IO)
+    val scope = CoroutineScope(Dispatchers.IO+SupervisorJob()  )
     private var messagesender: MessageSender? = null
     @JvmStatic
     public fun getMessageSender(): MessageSender? {
@@ -479,8 +480,19 @@ public fun sendDatawithInt(ident: Int, data: ByteArray) {
 		}
      @JvmStatic 	
      public fun isGalaxy(node:Node): Boolean {
-    	return node.getDisplayName().startsWith("Galaxy Watch") 
+         val name=node.getDisplayName()
+    	val res= name.startsWith("Galaxy Watch") 
+      Log.i(LOG_ID,"isGalaxy($name)=$res")
+      return res;
 	}
+
+     @JvmStatic 	
+     public fun reinit() {
+     		Log.i(LOG_ID,"reinit")
+		Natives.resetnetwork()
+		getMessageSender()?.nulltimes()
+		sendnetinfo()
+		}
     }
 
 }

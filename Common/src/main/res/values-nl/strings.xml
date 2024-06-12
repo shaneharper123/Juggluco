@@ -200,7 +200,7 @@
     <string name="comments">Opmerking</string>
  <string name="sendamounts">Zend hoeveelheden</string>
  <string name="resendquestion">Herzend data?</string>
- <string name="resendmessage">Gebruik \"Resend data\" enkel na wisseling naar een ander Libreview account of nadat het huidige \"Apparaat\" uit Libreview verwijderd is (Account instellingen->Mijn Apparaten).</string>
+ <string name="resendmessage">Zorg ervoor dat je geen overlappende gegevens naar Libreview zend.</string>
  <string name="getaccountidquestion">Haal Account ID van Libreview?</string>
  <string name="getaccountidmessage">De Account ID is noodzakelijk om Libre3 sensoren te gebruiken die geactiveerd zijn door Abbott\'s Libre3 app met dit Libreview account.</string>
  <string name="deleteconnection">Verwijder verbinding?</string>
@@ -254,6 +254,7 @@
   <string name="changeinsulin">"Verander insulinetype naar "</string>
      <string name="type">"Type: "</string>
     <string name="dosesprior">Voeg enkel doses toe van na:</string>
+    <string name="modify">Wijzig</string>
 <string name="notsynced">Niet gesynchroniseerd</string>
   <string name="lossdata">Instellen op standaardwaarden kan leiden tot gegevensverlies.</string>
   <string name="defaults">Standaardwaarden</string>
@@ -316,5 +317,10 @@
 <string name="resendwarning">Alle gegevens worden opnieuw verzonden, wat tijd kost en gevolgen kan hebben voor Libreview en Kerfstok</string>
 <string name="parseip">Fout bij interpreteren van IP</string>
 <string name="toomanyhosts">Maximumaantal hosts overschreden</string>
-<string name="senthosts">Juggluco zendt naar maximaal 4 hosts</string>
+<string name="senthosts">Juggluco zendt naar maximaal 6 hosts</string>
+   <string name="clampnow">Vast nu</string>
+    <string name="sendfrom">Zend vanaf:</string>
+ <string name="changestartbutton">Begin wijzigen</string>
+ <string name="floatjuggluco">Boven</string>
+ <string name="threshold">Drempel</string>
 </resources>

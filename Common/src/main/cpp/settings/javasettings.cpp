@@ -334,7 +334,7 @@ extern "C" JNIEXPORT void  JNICALL   fromjava(setshowalways)(JNIEnv *env, jclass
 	settings->data()->dontshowalways=!val;
 	}
 
-static const uint32_t starttime=time(nullptr);
+//static const uint32_t starttime=time(nullptr);
 extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getaskedNotify)(JNIEnv *env, jclass cl) {
 /*
 	constexpr const uint32_t waittime=
@@ -386,10 +386,14 @@ extern "C" JNIEXPORT void  JNICALL   fromjava(setuseflash)(JNIEnv *env, jclass c
 	settings->data()->flash=val;
 	}
 extern "C" JNIEXPORT jintArray  JNICALL   fromjava(numAlarmEvents)(JNIEnv *env, jclass cl) {
+   LOGAR("start numAlarmEvents");
 	vector<int> failures=settings->numAlarmEvents();
+   LOGAR("after failures=numAlarmEvents");
 	const int failnr= failures.size();
-	if(!failnr)
+	if(!failnr) {
+      LOGAR("failures.size()==0");
 		return nullptr;
+      }
 	jintArray  uit=env->NewIntArray(failnr) ;
 	env->SetIntArrayRegion(uit, 0,failnr, failures.data());
 	return uit;
@@ -695,6 +699,8 @@ extern "C" JNIEXPORT void  JNICALL   fromjava(setlibreemail)(JNIEnv *env, jclass
 	env->GetStringUTFRegion(jemail, 0,jlen, settings->data()->libreemail);
 	jint len = env->GetStringUTFLength( jemail);
 	settings->data()->libreemail[len]='\0';
+	if(jlen<3)
+		settings->data()->uselibre=false;
 	 }
 extern "C" JNIEXPORT jstring  JNICALL   fromjava(getlibreemail)(JNIEnv *env, jclass cl) {
 	 return env->NewStringUTF(settings->data()->libreemail);
@@ -972,10 +978,14 @@ extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getSendNumbers)(JNIEnv *env, j
 	return settings->data()->sendnumbers;
 	}
 extern "C" JNIEXPORT jboolean  JNICALL   fromjava(canSendNumbers)(JNIEnv *env, jclass cl,jint night) {
-	if(!night&&settings->data()->sendnumbers)
-		return true;
-	if(night&&settings->data()->saytreatments)
-		return true;
+	if(!night) {
+		if(settings->data()->sendnumbers)
+			return true;
+		}
+	else  {
+		if(settings->data()->saytreatments ||settings->data()->postTreatments)
+			return true;
+		}
 	const auto *nums=night?settings->data()->Nightnums:settings->data()->librenums;
 	for(int i=0;i<settings->getlabelcount();++i) {
 		if(!nums[i].kind) {
@@ -1054,6 +1064,16 @@ extern "C" JNIEXPORT void  JNICALL   fromjava(setglucodataRecepters)(JNIEnv *env
 	setstringarray(env,jnames,reinterpret_cast<BroadcastListeners<0> *>(broad), broad->getmax());
         }
 
+extern "C" JNIEXPORT jobjectArray  JNICALL   fromjava(everSenseRecepters)(JNIEnv *env, jclass cl) {
+	return mkjavastringarray(env,&settings->data()->everSenseBroadcast);
+        }
+extern "C" JNIEXPORT void  JNICALL   fromjava(seteverSenseRecepters)(JNIEnv *env, jclass cl, jobjectArray jnames) {
+	auto *broad=&settings->data()->everSenseBroadcast;
+	setstringarray(env,jnames,reinterpret_cast<BroadcastListeners<0> *>(broad), broad->getmax());
+        }
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(geteverSensebroadcast)(JNIEnv *env, jclass cl) {
+	return settings->data()->everSenseBroadcast.nr;
+	}
 
 extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getxbroadcast)(JNIEnv *env, jclass cl) {
 	return settings->data()->xdripBroadcast.nr;
@@ -1077,9 +1097,7 @@ extern "C" JNIEXPORT jint  JNICALL   fromjava(getinitVersion)(JNIEnv *env, jclas
 extern "C" JNIEXPORT void  JNICALL   fromjava(setfloatglucose)(JNIEnv *env, jclass cl,jboolean val) {
 	settings->data()->floatglucose=val;
 	}
-extern void	makenightswitch();
 extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getfloatglucose)(JNIEnv *env, jclass cl) {
-	makenightswitch(); //Something after everything
 	return settings->data()->floatglucose;
 	}
 
@@ -1119,7 +1137,10 @@ extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getfloatingTouchable)(JNIEnv *
 extern "C" JNIEXPORT void  JNICALL   fromjava(setfloatingPos)(JNIEnv *env, jclass cl,jint val) {
 	settings->data()->floatingPos=val;
 	}
+
+extern void	makenightswitch();
 extern "C" JNIEXPORT jint  JNICALL   fromjava(getfloatingPos)(JNIEnv *env, jclass cl) {
+	makenightswitch(); //Something after everything
 	return settings->data()->floatingPos;
 	}
 
@@ -1197,7 +1218,8 @@ extern "C" JNIEXPORT jstring  JNICALL   fromjava(getnightuploadsecret)(JNIEnv *e
 	return env->NewStringUTF(settings->data()->nightuploadsecret);
 	}
 	extern	void enduploaderthread();
-extern "C" JNIEXPORT void  JNICALL   fromjava(setNightUploader)(JNIEnv *env, jclass cl,jstring jurl,jstring jsecret,jboolean active) {
+extern "C" JNIEXPORT void  JNICALL   fromjava(setNightUploader)(JNIEnv *env, jclass cl,jstring jurl,jstring jsecret,jboolean active,jboolean v3) {
+	settings->data()->nightscoutV3=v3;
 	if(jurl!=nullptr) {
 		int maxurllen=sizeof(settings->data()->nightuploadname)-1;
 		char *name=settings->data()->nightuploadname;
@@ -1499,9 +1521,20 @@ extern "C" JNIEXPORT jboolean  JNICALL   fromjava(isLibreMmol)(JNIEnv *env, jcla
 extern "C" JNIEXPORT jint  JNICALL   fromjava(getLibreCountry)(JNIEnv *env, jclass cl) {
 	return settings->data()->getLibreCountry();
 	}
+extern "C" JNIEXPORT void  JNICALL   fromjava(setLibreCountry)(JNIEnv *env, jclass cl,int val) {
+	settings->data()->librecountry=val+1;
+	}
 
 
 extern bool switchgen2();
+
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(optionStreamHistory)(JNIEnv *env, jclass cl) {
+#if defined(__aarch64__) 
+   return false;
+#else
+	return !settings->data()->nobluetooth;
+#endif
+   }
 extern "C" JNIEXPORT void  JNICALL   fromjava(setStreamHistory)(JNIEnv *env, jclass cl,jboolean val) {
 	if(val!= settings->data()->streamHistory) {
 		settings->data()->streamHistory=val;
@@ -1535,10 +1568,71 @@ extern "C" JNIEXPORT jint  JNICALL   fromjava(getinterval)(JNIEnv *env, jclass c
 	return settings->data()->nightinterval;
 	}
 
+/*
 extern "C" JNIEXPORT void  JNICALL   fromjava(setnightscoutV3)(JNIEnv *env, jclass cl,jboolean val) {
 	settings->data()->nightscoutV3=val;
-	}
+	} */
 extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getnightscoutV3)(JNIEnv *env, jclass cl) {
 	return settings->data()->nightscoutV3;
 	}
 
+
+extern "C" JNIEXPORT void  JNICALL   fromjava(sethealthConnect)(JNIEnv *env, jclass cl,jboolean val) {
+	settings->data()->healthConnect=val;
+	}
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(gethealthConnect)(JNIEnv *env, jclass cl) {
+	return settings->data()->healthConnect;
+	}
+
+
+static bool hasRapidInsulin() {
+	const int nr=settings->getlabelcount();
+	for(int i=0;i<nr;i++) {
+		if(settings->data()->Nightnums[i].kind==1)
+			return true;
+		}
+	return false;
+	}
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(setIOB)(JNIEnv *env, jclass cl,jboolean val) {
+	if(val) {
+		if(!hasRapidInsulin()) {
+			return false;
+			}
+		}
+	settings->data()->IOB=val;
+	return true;
+	}
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getIOB)(JNIEnv *env, jclass cl) {
+	return settings->data()->IOB;
+	}
+
+
+#ifndef WEAROS
+extern double getiob(uint32_t now);
+extern "C" JNIEXPORT jfloat  JNICALL   fromjava(getIOBvalue)(JNIEnv *env, jclass cl,long time) {
+	if(!settings->data()->IOB)
+		return NAN;
+	return getiob(time/1000LL);
+	}
+#endif
+
+
+extern "C" JNIEXPORT void  JNICALL   fromjava(setfloattime)(JNIEnv *env, jclass cl,jboolean val) {
+	settings->data()->floattime=val;
+	}
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getfloattime)(JNIEnv *env, jclass cl) {
+	return settings->data()->floattime;
+	}
+extern "C" JNIEXPORT void  JNICALL   fromjava(sethidefloatinJuggluco)(JNIEnv *env, jclass cl,jboolean val) {
+	settings->data()->hidefloatinJuggluco=val;
+	}
+extern "C" JNIEXPORT jboolean  JNICALL   fromjava(gethidefloatinJuggluco)(JNIEnv *env, jclass cl) {
+	return settings->data()->hidefloatinJuggluco;
+	}
+
+extern "C" JNIEXPORT jfloat  JNICALL   fromjava(getthreshold)(JNIEnv *env, jclass cl) {
+	return settings->data()->threshold;
+	}
+extern "C" JNIEXPORT void  JNICALL   fromjava(setthreshold)(JNIEnv *env, jclass cl,jfloat val) {
+	settings->data()->threshold=val;
+	}

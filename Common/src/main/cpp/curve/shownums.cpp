@@ -18,6 +18,7 @@
 /*                                                                                   */
 /*      Fri Jan 27 15:20:04 CET 2023                                                 */
 
+#ifndef WEAROS
 
 #include <array>
 #include <stdio.h>
@@ -95,7 +96,6 @@ void numscreenback(NVGcontext* vg, const F & col)  {
 		col(vg,nr,dleft,dleft+xwidth-smallsize);
 		}
 	}
-
 inline int mktmmin(const struct tm *tmptr) {
 	return tmptr->tm_min;
 	}
@@ -149,7 +149,6 @@ void	shower(NVGcontext* vg,const Num *num,const float xpos,const float xend,cons
 	nvgText(vg, xend,ypos,item,item+itemlen);
 	}
 
-#ifndef WEAROS
 void shownums(NVGcontext* vg, NumIter<Num> *numiters, const int nr) {
 LOGGER("shownums width=%d height=%d\n",numcontrol.width,numcontrol.height);
 	numscreen(vg,[numiters,nr](NVGcontext *vg,float xpos,float xend) {
@@ -185,6 +184,7 @@ int getcolumns(jint width) {
 extern "C" JNIEXPORT jint JNICALL fromjava(getcolumns)(JNIEnv *env, jclass thiz,jint width) {
 	if(!numlist)
 		return 2;
+      LOGGER("getcolumns %d\n",width);
 	return getcolumns(width);
 	}
 extern "C" JNIEXPORT jint JNICALL fromjava(numcontrol)(JNIEnv *env, jclass thiz,jint width,jint height) {
@@ -192,6 +192,7 @@ extern "C" JNIEXPORT jint JNICALL fromjava(numcontrol)(JNIEnv *env, jclass thiz,
 		return 2;
 	numcontrol={width,height};
 	nrcolumns= getcolumns(width);
+   LOGGER("numcontrol %d nrcolumns=%d\n",width,nrcolumns);
 //	numiterinit();
 	return nrcolumns;
 	}

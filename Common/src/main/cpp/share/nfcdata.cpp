@@ -22,9 +22,10 @@
   #define _XOPEN_SOURCE
 
 //#include "history.h"
+#include <algorithm>
 #include "alg.h"
 #include "nfcdata.h"
-
+#include "settings/settings.h"
 
 
 
@@ -47,7 +48,7 @@ int    sensorAgeInMinutes = getSensorAgeInMinutes();
 		time_t wastime=(onmindate-dataAgeInMinutes)*60;
 	timestring(wastime,timestr,maxt);
 	//		int sum=gethistglucose<uint32_t>(counter);
-		outf("%s %.1f %d\n",timestr,glucoseLevelRaw/180.0,glucoseLevelRaw);
+		outf("%s %.1f %d\n",timestr,glucoseLevelRaw/convfactor,glucoseLevelRaw);
             }
         }
 	}
@@ -69,7 +70,7 @@ int    sensorAgeInMinutes = getSensorAgeInMinutes();
 		time_t wastime=(onmindate-dataAgeInMinutes)*60;
 //		int  sum=getTrendrest<uint32_t>(counter);
 		timestring(wastime,timestr,maxt);
-		outf("%s %.1f %d\n",timestr,glucoseLevelRaw/180.0,glucoseLevelRaw);
+		outf("%s %.1f %d\n",timestr,glucoseLevelRaw/convfactor,glucoseLevelRaw);
 
             }
         }
@@ -87,7 +88,7 @@ auto pos=inp.find_last_of('/',len-15);
 const char *name=inp.data()+( (pos== std::string_view::npos)? 0: pos+1);
 //const char *end = inp.data()+inp.length();
 const char *end = inp.end();
-const char *num=find_if_not(name,end,[](char val) {return isdigit(val)==0;});
+const char *num=std::find_if_not(name,end,[](char val) {return isdigit(val)==0;});
 	if(end==num) {
 		cerr<<name<<"No date in filename"<<endl;
 		return -1;
@@ -129,7 +130,7 @@ char timestr[maxt];
 		if(dataAgeInMinutes >= sensorAgeInMinutes ) {
 			time_t wastime=(onmindate-dataAgeInMinutes)*60;
 			timestring(wastime,timestr,maxt);
-			outf("%s: %.1f, before start sensor\n",timestr,glucoseLevelRaw/180.0);
+			outf("%s: %.1f, before start sensor\n",timestr,glucoseLevelRaw/convfactor);
 			return false;
 			}
 		  }

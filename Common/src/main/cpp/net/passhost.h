@@ -72,11 +72,16 @@ false	  	false	  	0
 	bool sendpassive:1;  // send to named host passive only
 	bool hasname:1;
 	bool noip:1;
+	uint16_t reserved:15;
+	bool deactivated:1;
 	bool hashostname() const {
 		return hostname;
 		}
 	const char *gethostname() const {
 		return reinterpret_cast<const hostnamedata*>(ips)->name;
+		}
+	char *gethostname() {
+		return reinterpret_cast<hostnamedata*>(ips)->name;
 		}
 	void sethostname(std::string_view name) {
 		int len=std::min(name.size(),sizeof(hostnamedata::name)-1);

@@ -244,15 +244,14 @@ public static native boolean getsystemUI();
 
 public static native boolean backuphasrestore( );
 public static native int backuphostNr( );
-public static native String[] getbackuphostnames(int pos);
+public static native String[] getbackupIPs(int pos);
+public static native boolean getbackupHasHostname(int pos);
+
 public static native String getbackuphostport(int pos);
 public static native String getbackuppassword(int pos);
 public static native boolean isWearOS(int pos);
-//public static native int changebackuphost(int pos,String name,String port,boolean nums,boolean stream,boolean scans );
-//public static native int changebackuphost(int pos,String name,String port,boolean nums,boolean stream,boolean scans,boolean receive,boolean reconnect,String pass);
-//public static native int changebackuphost(int pos,String[] names,int nr,boolean dodetect,String port,boolean nums,boolean stream,boolean scans,boolean recover,boolean receive,boolean reconnect,boolean accepts,String pass,long starttime);
 
-public static native int changebackuphost(int pos,String[] names,int nr,boolean detect,String port,boolean nums,boolean stream,boolean scans,boolean recover,boolean receive,boolean activeonly,boolean passiveonly,String pass,long starttime,String label,boolean testip);
+public static native int changebackuphost(int pos,String[] names,int nr,boolean detect,String port,boolean nums,boolean stream,boolean scans,boolean recover,boolean receive,boolean activeonly,boolean passiveonly,String pass,long starttime,String label,boolean testip,boolean hasname);
 
 
 public static native boolean detectIP(int pos);
@@ -491,7 +490,7 @@ public static native boolean switchgen2( );
 
 //public static native void logBluetoothGattCharacteristic(String jmess, BluetoothGattCharacteristic bluetoothGattCharacteristic);
 
-public static native void clearlibreview( );
+public static native void  clearlibreFromMSec(long from);
 public static native void wakelibreview(int min );
 
 
@@ -589,6 +588,11 @@ public static native boolean getheartrate( );
 public static native String[] librelinkRecepters( );
 public static native void setlibrelinkRecepters( String[] jnames);
 public static native boolean getlibrelinkused();
+public static native String[] everSenseRecepters();
+public static native boolean geteverSensebroadcast();
+
+public static native void seteverSenseRecepters( String[] jnames);
+
 public static native String[] xdripRecepters( );
 public static native void setxdripRecepters( String[] jnames);
 public static native String[] glucodataRecepters( );
@@ -627,7 +631,7 @@ public static native boolean getsaytreatments( );
 public static native boolean getuseuploader( );
 public static native String getnightuploadurl( );
 public static native String getnightuploadsecret( );
-public static native void setNightUploader(String jurl,String Secret,boolean active);
+public static native void setNightUploader(String jurl,String Secret,boolean active,boolean v3);
 public static native void wakeuploader( );
 public static native void resetuploader( );
 public static native void setAndroid13(boolean val);
@@ -676,6 +680,7 @@ public static native boolean canSendNumbers(int night);
 public static native int getinfogen(byte[] info);
 public static native void setStreamHistory(boolean val);
 public static native boolean getStreamHistory( );
+public static native boolean optionStreamHistory();
 public static native void setLibreIsViewed(boolean val);
 public static native boolean getLibreIsViewed( );
 public static native void setRTL(boolean val);
@@ -696,25 +701,51 @@ public static native void setspeakalarms(boolean val);
 
 public static native boolean speakalarms( );
 public static native int getLibreCountry();
+public static native void setLibreCountry(int val);
 public static native void setinterval(int val);
 public static native int getinterval( );
 
 public static native boolean getpostTreatments( );
 public static native void setpostTreatments(boolean val);
 public static native long getSensorStartmsec(long dataptr);
-public static native void setnightscoutV3(boolean val);
+//public static native void setnightscoutV3(boolean val);
 public static native boolean getnightscoutV3( );
+public static native long streamfromSensorptr(long sensorptr,int pos);
+public static native int healthConnectfromSensorptr(long sensorptr);
+public static native void healthConnectWritten(long sensorptr,int pos);
+public static native void sethealthConnect(boolean val);
+public static native boolean gethealthConnect( );
+public static native void healthConnectReset();
+public static native boolean setIOB(boolean val);
+public static native boolean getIOB( );
+public static native float getIOBvalue(long time);
+public static native String serverError();
+public static native String nightError();
+public static native void setcurrentRelative(boolean val);
+public static native boolean getcurrentRelative( );
+public static native void setfloattime(boolean val);
+public static native boolean getfloattime( );
+public static native void sethidefloatinJuggluco(boolean val);
+public static native boolean gethidefloatinJuggluco( );
+public static native boolean getHostDeactivated(int pos);
+public static native void setHostDeactivated(int pos,boolean val);
 
-//s/^extern.*JNIEXPORT[         ]*\([a-zA-Z]*\)[ ]*JNICALL[      ]*fromjava(\([^)]*\)) *(JNIEnv[^,]*,[^,)]*[,)]\([^){]*\)[^a-zA-Z0-9]*$/public static native \1 \2(\3);/g
+//public static native long makeSIdataptr(String gegs);
+//public static native int getSIindex(long dataptr);
+public static native void saveDeviceName(long dataptr,String deviceName);
+public static native long SIprocessData(long dataptr, byte[] bluetoothdata,long mmsec);
+public static native String getSiBluetoothNum(long dataptr);
+public static native byte[] getSiWriteCharacter(long dataptr);
+public static native String addSIscangetName(String jgegs);
+public static native boolean hasSibionics();
+//public static native String getShowSensorName(long dataptr);
+
+public static native String getUsedSensorName( );
+public static native float getthreshold( );
+public static native void setthreshold(float val);
+
 //public static native void sendxdripold();
-/*
-public static boolean speakmessages() {
-	return gettouchtalk();
-	}
-public static boolean speakalarms() {
-	return SuperGattCallback.dotalk;
-	}*/
-
+//s/^extern.*JNIEXPORT[         ]*\([a-zA-Z]*\)[ ]*JNICALL[      ]*fromjava(\([^)]*\)) *(JNIEnv[^,]*,[^,)]*[,)]\([^){]*\)[^a-zA-Z0-9]*$/public static native \1 \2(\3);/g
 }
 
 

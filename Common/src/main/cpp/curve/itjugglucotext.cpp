@@ -91,6 +91,7 @@ static jugglucotext ittext {
 	.lastscanned="Ultima scansione:",
 	.laststream="Ultima scansione:",
 	.sensorends="Il sensore teminerà il: ",
+	.sensorexpectedend="Expected to end: ",
 #ifndef WEAROS
 	.newamount="Nuovo valore",
 	.averageglucose="Media glicemica: ",
@@ -107,7 +108,11 @@ static jugglucotext ittext {
 		"Orologio",
 		"Sensore",
 		"Impostazione",
-		"About",
+#if defined(SIBIONICS)
+"Sibionics",
+#else
+"About",
+#endif
 		"Chiudi",
 		"Stop Allarme"
 		},
@@ -181,6 +186,7 @@ seguenti file)",
 .Rising="In aumento",
 .RisingQuickly="In rapido aumento",
 #endif
+.receivingpastvalues="Receiving old values"
 }
 		;
 #ifdef JUGGLUCO_APP

@@ -70,13 +70,13 @@ LOGGER("start=%d end=%d\n",start,uselen);
 			firstchanged=topos;
 #ifndef NOLOG
 		time_t tim=item->gettime();
-		LOGGER("add %d %.1f %s",item->getid(),(float) item->getmgdL()/18.0f,ctime(&tim));
+		LOGGER("add %d %.1f %s",item->getid(),(float) item->getmgdL()/convfactordL,ctime(&tim));
 #endif
 		}
 	else {
 #ifndef NOLOG
 		time_t tim=item->gettime();	
-		LOGGER("already streamed %d %.1f %s",item->getid(),(float)item->getmgdL()/18.0f,ctime(&tim));
+		LOGGER("already streamed %d %.1f %s",item->getid(),(float)item->getmgdL()/convfactordL,ctime(&tim));
 #endif
 		}
 	if(!gluv.getQuality())
@@ -102,7 +102,7 @@ extern std::vector<int> usedsensors;
 extern void setusedsensors();
 void setstartedwithStreamhistory() {
 	if(SensorGlucoseData *sens=sensors->getSensorData()) {
-		if(!sens->isLibre3()&&!sens->getinfo()->startedwithStreamhistory) {
+		if(sens->isLibre2()&&!sens->getinfo()->startedwithStreamhistory) {
 			sens->getinfo()->startedwithStreamhistory=std::max(sens->getinfo()->endhistory,1);
 			}
 		}
@@ -112,7 +112,7 @@ void setstartedwithStreamhistory() {
 	setusedsensors();
 	for(int index:usedsensors) {
 		  SensorGlucoseData *sens=sensors->getSensorData(index );
-		  if(sens&&!sens->isLibre3()) {
+		  if(sens&&sens->isLibre2()) {
 			sens->getinfo()->startedwithStreamhistory=std::max(sens->getinfo()->endhistory,1);
 			}
 		}
@@ -124,7 +124,7 @@ void setendedwithStreamhistory() {
 	setusedsensors();
 	for(int index:usedsensors) {
 		  SensorGlucoseData *sens=sensors->getSensorData(index );
-		  if(sens&&!sens->isLibre3()) {
+		  if(sens&&sens->isLibre2()) {
 			sens->getinfo()->startedwithStreamhistory=0;
 			}
 		}

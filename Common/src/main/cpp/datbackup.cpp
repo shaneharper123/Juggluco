@@ -129,7 +129,18 @@ int 	updateone::updatenums() {
 	int soc=getsock();
 	if(soc<0)
 		return 0;
-	return ::updatenums(getcrypt(),soc,nums,ind);
+	if(!sendjugglucoid) {
+		LOGAR("updatenums sendjugglucoid");
+		const int offset=offsetof(Tings,jugglucoID);
+		const auto *data=reinterpret_cast<const senddata_t*>(&settings->data()->jugglucoID);
+		const int len=sizeof(Tings::jugglucoID);
+		if(!senddata(getcrypt(),soc,offset,data,len,settingsdat) )  {
+			LOGAR("updatenums sendjugglucoid error");
+			return 0;
+			}
+		sendjugglucoid=true;
+		}
+	return ::updatenums(getcrypt(),getsock(),nums,ind);
 	}
 
 int  updateone::updatestreamu() {
@@ -217,6 +228,9 @@ static int sayactivereceive(const passhost_t *host) {
 void	updateone::open() {
      auto *host=backup->getupdatedata()->allhosts+allindex;
      LOGGER("updateone::open %d %s  receivefrom=%d sendpassive=%d activereceive=%d\n",allindex,host->getnameif(),host->receivefrom,host->sendpassive,host->activereceive);
+     if(host->deactivated) {
+     	return;
+     	 }
 
 #ifdef WEAROS_MESSAGES
 	if(host->wearos&&wearmessages[allindex]) {
@@ -363,6 +377,10 @@ void updatedata::wakesender() {
     LOGAR("wakesender");
     for(int i=0;i<hostnr;i++) {
 	passhost_t &host=allhosts[i];
+	if(host.deactivated) {
+        LOGGER("%d deactivated\n", i);
+        }
+	else {
 	if(
 #ifdef WEAROS_MESSAGES
 	!(wearmessages[i]&&host.wearos)&&
@@ -394,12 +412,17 @@ void updatedata::wakesender() {
 					  
 				}
 		}
+		}
 	}
 	}
 void updatedata::wakestreamsender() {
     LOGAR("wakestreamsender");
 	for(int i=0;i<hostnr;i++) {
 		passhost_t &host=allhosts[i];
+		if(host.deactivated) {
+		LOGGER("deactivated %d\n",i);
+		}
+	else {
 	if(
 #ifdef WEAROS_MESSAGES
 	!(wearmessages[i]&&host.wearos)&&
@@ -423,6 +446,7 @@ void updatedata::wakestreamsender() {
 					  
 				}
 			}
+		}
 		}
 	}
 
@@ -527,10 +551,70 @@ void resethost(passhost_t &host) {
 
 #include <mutex>
 std::mutex change_host_mutex;
-void definished(int sensorindex) {
-	backup->definished(sensorindex);	
+void resensordata(int sensorindex) {
+	backup->resensordata(sensorindex);	
 	}
 
 int getgetsendnr() {
 	return backup->getupdatedata()->sendnr;
 	}
+void wakesender() {
+	 backup->getupdatedata()->wakesender();	
+	 }
+#include "mirrorerror.h"
+char mirrorerrors[maxallhosts][maxmirrortext];
+int getindex(const  passhost_t *host) {
+	return host-backup->getupdatedata()->allhosts;
+	}
+char *getmirrorerror(const passhost_t *pass) {
+	int index=getindex(pass);
+	return mirrorerrors[index];
+	}
+int savemessage(const passhost_t *pass,const char* fmt, ...){
+        va_list args;
+        va_start(args, fmt);
+	char *buf=getmirrorerror(pass);
+	int len=vsnprintf(buf,maxmirrortext, fmt, args);
+	va_end(args);
+    return len;
+	}
+	/*
+void saveerror(const passhost_t *pass,const char* fmt, ...){
+	int waser=errno;
+        va_list args;
+        va_start(args, fmt);
+	char *buf=getmirrorerror(pass);
+	int len=vsnprintf(buf,maxmirrortext, fmt, args);
+	va_end(args);
+	strcpy(buf+len,": ");
+	len+=2;
+	if(len<maxmirrortext)
+		strerror_r(waser, buf+len, maxmirrortext-len);
+	} */
+
+void savebuferror(char *buf,int maxbuf,const char* fmt, ...){
+	int waser=errno;
+        va_list args;
+        va_start(args, fmt);
+	int len=vsnprintf(buf,maxbuf, fmt, args);
+	va_end(args);
+	strcpy(buf+len,": ");
+	len+=2;
+	if(len<maxbuf)
+		strerror_r(waser, buf+len, maxbuf-len);
+	}
+
+
+void	sendstartsensors(int startpos) {
+	LOGGER("sendstartsensors(%d)\n",startpos);
+	const int maxint=backup->getupdatedata()->sendnr;
+	for(int i=0;i<maxint;i++) {
+		auto &host=backup->getupdatedata()->tosend[i];
+		LOGGER("%i %d\n",i,host.startsensors);
+		if(host.startsensors>startpos)
+			host.startsensors=startpos;
+		}
+	}
+
+
+

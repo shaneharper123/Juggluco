@@ -114,14 +114,14 @@ static void othersworking(SuperGattCallback current ,long timmsec) {
 	  return false;
     	}
     public boolean connectToActiveDevice(SuperGattCallback cb,long delayMillis) {
-	Log.i(LOG_ID,"connectToActiveDevice(SuperGattCallback cb,"+ delayMillis+")");
+	Log.i(LOG_ID,"connectToActiveDevice("+cb.SerialNumber+"," + delayMillis+")");
 	if(!cb.connectDevice(delayMillis)&&!mScanning) {
 		return startScan(delayMillis);
 		}
 	return false;
     }
-long unknownfound=0L;
-String unknownname="";
+//long unknownfound=0L;
+//String unknownname="";
 private SuperGattCallback  getCallback(BluetoothDevice device) {
 	try {
 		@SuppressLint("MissingPermission") String deviceName = device.getName();
@@ -129,21 +129,22 @@ private SuperGattCallback  getCallback(BluetoothDevice device) {
 		if(deviceName == null) {
 			Log.d(LOG_ID, "Scan returns device without name");
 			return null;
-		}
+			}
+			/*
 		if(!deviceName.startsWith("ABBOTT")) {
 			return null;
-		}
+			} */
 		String address = device.getAddress();
-		String SerialNumber = deviceName.substring(6);
+//		String SerialNumber = deviceName.substring(6);
 		for (var cb : gattcallbacks) {
 			if (cb.mActiveDeviceAddress != null && address.equals(cb.mActiveDeviceAddress))
 				return cb;
-			if (SerialNumber.equals(cb.SerialNumber))
+			if(cb.matchDeviceName(deviceName,address))
 				return cb;
 			Log.d(LOG_ID, "not: " + cb.SerialNumber);
-		}
-		unknownfound = System.currentTimeMillis();
-		unknownname = SerialNumber;
+		       }
+		//unknownfound = System.currentTimeMillis();
+		//unknownname = deviceName;
 		return null;
 	} catch(Throwable e) {
 		Log.stack(LOG_ID,	"getCallback",e);
@@ -174,6 +175,7 @@ private boolean checkdevice(BluetoothDevice device) {
 			for (SuperGattCallback one : gattcallbacks) {
 				if (one.mActiveBluetoothDevice == null) {
 					Log.i(LOG_ID, one.SerialNumber + " not found");
+						
 					ret = false;
 					break;
 				}
@@ -198,42 +200,47 @@ long scantimeouttime=0L;
 
 boolean mScanning = false;
 class Scanner21 implements Scanner  {
-final	private List<ScanFilter> mScanFilters = new ArrayList<>();
+final	private List<ScanFilter> mScanFilters = null;
 final	private ScanSettings mScanSettings;
 	private BluetoothLeScanner mBluetoothLeScanner=null;
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 	private final ScanCallback mScanCallback = new ScanCallback() {
 		@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-		private boolean processScanResult(ScanResult scanResult) {
-		    if (gattcallbacks.size()<1) {
+	private synchronized boolean processScanResult(ScanResult scanResult) {
+		    if(gattcallbacks.size()<1) {
 			Log.w(LOG_ID,"No Sensors to search for");
 			SensorBluetooth.this.stopScan(false);
 			return true;
 		    }
-			return checkdevice(scanResult.getDevice());
+		return checkdevice(scanResult.getDevice());
 		}
-		private  boolean resultbusy=false;
+//	private  boolean resultbusy=false;
 
 		@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
 		@Override
 		public void onScanResult(int callbackType, ScanResult scanResult) {
 		    Log.d(LOG_ID,"onScanResult");
+			processScanResult(scanResult);
+			/*
 		    if(!resultbusy) {
 			resultbusy=true;
 			processScanResult(scanResult);
 			resultbusy=false;
-		    }
+		    } */
 		}
 
 		@Override 
 		public void onBatchScanResults(List<ScanResult> list) {
-		    int i = 0;
-		    Log.v(LOG_ID,"onBatchScanResults");
-		    while (i < list.size() && !processScanResult(list.get(i))) {
-			i++;
-		    }
-		}
-
+		    //if(!resultbusy) 
+		    {
+		//	    resultbusy=true;
+			    Log.v(LOG_ID,"onBatchScanResults");
+			   final var len=list.size();
+			    for(int i=0;i < len&& !processScanResult(list.get(i));++i) 
+				;
+		//	    resultbusy=false;
+			     }
+		     }
 		@Override 
 		public void onScanFailed(int errorCode) {
    		   if(doLog) {
@@ -258,9 +265,11 @@ final	private ScanSettings mScanSettings;
 		ScanSettings.Builder builder = new ScanSettings.Builder();
 		builder.setReportDelay(0);
 		mScanSettings = builder.build();
-		ScanFilter.Builder builder2 = new ScanFilter.Builder();
+	/*	
+		mScanFilters=new ArrayList<>();
+	ScanFilter.Builder builder2 = new ScanFilter.Builder();
 		builder2.setServiceUuid(new ParcelUuid(SensorBluetooth.mADCCustomServiceUUID));
-		mScanFilters.add(builder2.build());
+		mScanFilters.add(builder2.build()); */
 		Log.i(LOG_ID,"Scanner21");
 		}
 	@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
@@ -409,8 +418,8 @@ public void stopScan(boolean retry) {
         if (this.mScanning) {
             stopscantime=System.currentTimeMillis();
             this.mScanning = false;
-            if (bluetoothIsEnabled()) {
-		scanner.stop();
+	    scanner.stop();
+            if(bluetoothIsEnabled()) {
 		if(retry) {
 			int waitscan=scaninterval;
 			if(scantime>0L) {
@@ -439,12 +448,20 @@ static  ArrayList<SuperGattCallback>  mygatts() {
 	}
 private void removeDevice(String str) {
 	for(int i=0;i<gattcallbacks.size();i++) {
-		if(str.equals(gattcallbacks.get(i).SerialNumber)) {
-			Log.i(LOG_ID,"removeDevice "+ gattcallbacks.get(i).SerialNumber);
-			gattcallbacks.get(i).free();
+		var gatt= gattcallbacks.get(i);
+		if(str.equals(gatt.SerialNumber)) {
+			Log.i(LOG_ID,"removeDevice "+ gatt.SerialNumber);
+			gatt.free();
 			gattcallbacks.remove(i);
 			Natives.setmaxsensors(gattcallbacks.size());
+			for(;i<gattcallbacks.size();++i) {
+				gatt= gattcallbacks.get(i);
+				gatt.stopHealth=false;
+				}
 			return;
+			}
+		else {
+			gatt.stopHealth=false;
 			}
 		}	
 	Log.i(LOG_ID,"removeDevice: didn't remove"+ str);
@@ -464,10 +481,12 @@ private void destruct() {
 		removeDevices();
 		}
 	}
+
 public static void destructor() {
-	if(blueone!=null) {
+	var bluetmp=blueone;
+	if(bluetmp!=null) {
 		Log.i(LOG_ID,"destructor blueone!=null");
-		blueone.destruct();
+		bluetmp.destruct();
 		blueone=null;
 		}
 	else
@@ -556,14 +575,17 @@ private boolean updateDevicers() {
 	else {
 		
 		int heb=0;
+
 		for(int i=0;i<gatnr;i++) {
-			String was= gattcallbacks.get(i).SerialNumber;
+			var gatt= gattcallbacks.get(i);
+			String was= gatt.SerialNumber;
 			int instr=was==null?-1:indexOf(devs,was);
 			if(instr<0) {
 				Log.i(LOG_ID,"can remove "+ was);
 				rem.add(i);	
 				}
 			else {
+				gatt.stopHealth=false;
 				Log.i(LOG_ID,"keep "+ was);
 				heb++;
 				devs[instr]=null;		
@@ -621,15 +643,15 @@ static boolean updateDevices() {
 	}
 
 boolean checkandconnect(SuperGattCallback  cb,long delay) {
-	Log.i(LOG_ID,"checkandconnect(SuperGattCallback  cb,"+ delay+")");
+	Log.i(LOG_ID,"checkandconnect("+cb.SerialNumber+","+ delay+")");
 	if (cb.mActiveDeviceAddress != null) {
 		if(BluetoothAdapter.checkBluetoothAddress(cb.mActiveDeviceAddress)) {
-			Log.i(LOG_ID, "checkBluetoothAddress(" +cb.mActiveDeviceAddress +") succeeded");
+			Log.i(LOG_ID, cb.SerialNumber+" checkBluetoothAddress(" +cb.mActiveDeviceAddress +") succeeded");
 			cb.mActiveBluetoothDevice = mBluetoothAdapter.getRemoteDevice(cb.mActiveDeviceAddress);
 			connectToActiveDevice(cb, delay);
 			return false;
 		  }	 
-		Log.i(LOG_ID, "checkBluetoothAddress(" +cb.mActiveDeviceAddress +") failed");
+		Log.i(LOG_ID, cb.SerialNumber+" checkBluetoothAddress(" +cb.mActiveDeviceAddress +") failed");
 		 cb.setDeviceAddress(null);
 		}
 	if(Applic.mayscan()) {
@@ -639,10 +661,17 @@ boolean checkandconnect(SuperGattCallback  cb,long delay) {
 	return true;
 	}
 SuperGattCallback getGattCallback(String name, long dataptr) {
-	if(libreVersion==3) {
+	if(libreVersion==3||tk.glucodata.BuildConfig.SiBionics==1) {
 		int vers = Natives.getLibreVersion(dataptr);
-		if (vers == 3) {
-			return new Libre3GattCallback(name, dataptr);
+		if(libreVersion==3) {
+			if (vers == 3) {
+				return new Libre3GattCallback(name, dataptr);
+				}
+			}
+		if(tk.glucodata.BuildConfig.SiBionics==1) {
+			if(vers==0x10) {
+				return new SiGattCallback(name, dataptr);
+				}
 			}
 		}
 	return  new MyGattCallback(name,dataptr);
@@ -677,18 +706,19 @@ private boolean resetDevicer(long streamptr,String name) {
 	for(int i=0;i<gattcallbacks.size();i++) {
 		SuperGattCallback  cb= gattcallbacks.get(i);
 	   if(Natives.sameSensor(streamptr,cb.dataptr)) {
-		Log.d(LOG_ID,"reset free "+name);
-		cb.resetdataptr();
-		return checkandconnect(cb,0);
-		}
+		 Log.d(LOG_ID,"reset free "+name);
+		 cb.resetdataptr();
+		 return checkandconnect(cb,0);
+		 }
 	  }
 	return addDevice(name,streamptr);
     }
 
-static public boolean resetDevice(long ptr,String name) {
+static public boolean resetDeviceOrFree(long ptr,String name) {
 	if(blueone!=null) {
 		return blueone.resetDevicer(ptr,name);
 		}
+        Natives.freedataptr(ptr);
 	return false;
 	}
 private boolean resetDevicer(String str) {
@@ -748,6 +778,7 @@ static final boolean keepBluetooth=false;
 private void addreceiver() {
 	if(mBluetoothAdapterReceiver==null) {
 	 mBluetoothAdapterReceiver=new BroadcastReceiver() {
+//		private boolean wasScanning=false;
 		@SuppressLint("MissingPermission")
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -755,7 +786,7 @@ private void addreceiver() {
 			int intExtra = intent.getIntExtra("android.bluetooth.adapter.extra.STATE", -1);
 			if (intExtra == BluetoothAdapter.STATE_OFF) {
 			    Log.v(LOG_ID,"BLUETOOTH switched OFF");
-
+			    // wasScanning=mScanning; 
 			    SensorBluetooth.this.stopScan(false);
 			for(var cb: gattcallbacks)  
 				cb.close();
@@ -765,6 +796,7 @@ private void addreceiver() {
 			    if(!isWearable) {
 				    Applic.app.numdata.sync();
 				    }
+//			    if(wasScanning) { SensorBluetooth.this.startScan(250L); }
 			    SensorBluetooth.this.connectToActiveDevice(500);
 			}
 		    }

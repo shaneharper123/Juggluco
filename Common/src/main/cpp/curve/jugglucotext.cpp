@@ -80,7 +80,8 @@ jugglucotext engtext {
 	.sensorstarted= "Started:",
 	.lastscanned="Last scanned:",
 	.laststream="Last stream:",
-	.sensorends="Ends: ",
+	.sensorends="Ends officially: ",
+	.sensorexpectedend="Expected end: ",
 #ifndef WEAROS
 	.newamount="New Amount",
 	.averageglucose="Average glucose: ",
@@ -97,7 +98,13 @@ jugglucotext engtext {
 		"Watch",
 		"Sensor",
 		"Settings",
+
+#if defined(SIBIONICS)
+		"Sibionics",
+#else
 		"About",
+#endif
+
 		"Close",
 		"Stop Alarm"
 		},
@@ -204,8 +211,9 @@ are needed. In your case it has problems with the following file)",
 .Falling="Falling",
 .Stable="Changing slowly",
 .Rising="Rising",
-.RisingQuickly="Rising quickly"
+.RisingQuickly="Rising quickly",
 #endif
+.receivingpastvalues="Receiving old values"
 
 		}
 

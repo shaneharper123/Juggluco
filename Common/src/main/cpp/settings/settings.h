@@ -19,6 +19,8 @@
 /*      Fri Jan 27 12:36:58 CET 2023                                                 */
 
 #pragma once
+
+constexpr int maxbluetoothage=11*30;
 #ifdef NOLOG
 #define CONV18 1 //Minimally different and 18 fits better
 #endif
@@ -32,6 +34,8 @@ static constexpr const double convertmultmg=1.0/10.0;
 //static constexpr const float convfactor=180.0f;
 static constexpr const double convfactordL=convfactor*0.1;
 #include <array>
+//#include <stdfloat>
+typedef float float32_t;
 #ifdef  JUGGLUCO_APP
 #include "appcolor.h"
 #else
@@ -87,6 +91,13 @@ struct ring {
 constexpr static const int maxcolors=80;
 constexpr static const int startbackground=maxcolors/2;
 constexpr static const int maxalarms=5;
+
+typedef std::array<char,179> auth_t;
+constexpr static const int AUTHMAX=512;
+struct authpair {
+	auth_t auth;
+	uint32_t expires;
+	};
 
 struct Tings {
 	uint32_t glow,ghigh,tlow,thigh,alow,ahigh;
@@ -203,7 +214,7 @@ struct Tings {
 	char _nullchar1;
 	uint8_t librecountry;
 	int16_t empty2;
-	int32_t empty3;
+	float32_t threshold;
 	int32_t floatglucose;
 
 	char newYuApiKey[41];
@@ -233,7 +244,11 @@ struct Tings {
 
 	char newYuApiKey3[41];
 
-	bool reserved9:5;//*
+	bool hidefloatinJuggluco:1;//*
+	bool floattime:1;
+	bool currentRelative:1;//*
+	bool IOB:1;
+	bool healthConnect:1;
 	bool speakmessages:1;
 	bool speakalarms:1;
 	bool talktouch:1;
@@ -242,9 +257,19 @@ struct Tings {
 
 	uint16_t tokensize3;
 	char libreviewUserToken3[1024];
-	BroadcastListeners<5> librelinkBroadcast;
-	BroadcastListeners<10> xdripBroadcast;
-	BroadcastListeners<10> glucodataBroadcast;
+   union {
+      struct {
+         BroadcastListeners<2> librelinkBroadcast;
+         BroadcastListeners<3> everSenseBroadcast;
+         BroadcastListeners<10> xdripBroadcast;
+         BroadcastListeners<10> glucodataBroadcast;
+         };
+   struct {
+         BroadcastListeners<5> librelinkBroadcastOld;
+         BroadcastListeners<10> xdripBroadcastOld;
+         BroadcastListeners<10> glucodataBroadcastOld;
+         };
+      };
 	int nightuploadnamelen;
 	char nightuploadname[256+8];
 	char nightuploadsecret[80];
@@ -255,6 +280,11 @@ struct Tings {
 	int32_t nightinterval;
 	uint32_t timenumchanged;
 	uint32_t lastuploadtime;
+	uint32_t authstart;
+	uint32_t authend;
+	authpair authdata[AUTHMAX];
+	uint64_t jugglucoID;
+	uint32_t startlibretime;
 	void setdefault() {
 		memcpy(watchid,defaultid,sizeof(watchid));
 		};
@@ -267,7 +297,7 @@ struct Tings {
 		return !(getLibreCountry()&1);
 		}
 	int  getLibreCountry() {
-		if(!librecountry||librecountry>4) 
+		if(!librecountry||librecountry>5) 
 			librecountry=unit==1?1:2;
 		return librecountry-1;
 		}
@@ -347,6 +377,25 @@ void mklabels() {
 #else
 #define mklabels() 
 #endif
+private:
+void movecast(BroadcastListeners<10> &in,BroadcastListeners<10> &out) {
+   const int len=in.nr;
+   LOGGER("movecast len=%d\n",len);
+   for(int i=len-1;i>=0;--i) {
+      LOGGER("movecast IN %s\n",in.name[i]);
+      const auto slen=strlen(in.name[i]);
+      memmove(out.name[i],in.name[i],slen);
+      LOGGER("movecast %s\n",out.name[i]);
+      }
+   out.nr=len;
+   };
+void  movebroadcast() {
+    LOGAR("movebroadcast");
+   if(data()->librelinkBroadcast.nr>data()->librelinkBroadcast.getmax()) data()->librelinkBroadcast.nr=data()->librelinkBroadcast.getmax();
+   movecast(data()->glucodataBroadcastOld,data()->glucodataBroadcast);
+   movecast(data()->xdripBroadcastOld,data()->xdripBroadcast);
+   };
+public:
 Settings(const char *settingsname,const char *base,const char *country): Mmap(settingsname,1) {
 //Settings(string_view base, string_view file,const char *country): settingsfilename(base,file), Mmap(base,file,1) 
 	if(!data())  {
@@ -362,108 +411,119 @@ Settings(const char *settingsname,const char *base,const char *country): Mmap(se
 		return;
 		}
 
-	if(data()->initVersion<22) { // set in Applic.initbroadcasts, startjuggluco and initinjuggluco 
-	if(data()->initVersion<20) { // set in Applic.initbroadcasts, startjuggluco and initinjuggluco 
-	if(data()->initVersion<18) { // set in Applic.initbroadcasts, startjuggluco and initinjuggluco 
-	if(data()->initVersion<17) { 
-	     memcpy(data()->Nightnums,data()->librenums, sizeof(Tings::ToLibre)*data()->varcount);
-		if(data()->initVersion<16) { 
-		if(data()->initVersion<15) {
-			if(data()->initVersion<13) {
-				if(data()->initVersion<12) {
-				if(data()->initVersion<10) {
-				if(data()->initVersion<9) {
-					data()->sendtolibreview=data()->uselibre;
-					if(data()->initVersion<8) {
-						LOGGER("initVersion=%d\n",data()->initVersion);
-						if(data()->initVersion<7) { 
-							if(data()->initVersion<6) {
-								if(data()->initVersion<4) {
-									if(data()->varcount==0) {
-										data()->roundto=1.0f;
+	if(data()->initVersion<26) { 
+      if(data()->initVersion<22) { 
+      if(data()->initVersion<20) {
+      if(data()->initVersion<18) { // set in Applic.initbroadcasts, startjuggluco and initinjuggluco 
+      if(data()->initVersion<17) { 
+           memcpy(data()->Nightnums,data()->librenums, sizeof(Tings::ToLibre)*data()->varcount);
+         if(data()->initVersion<16) { 
+         if(data()->initVersion<15) {
+            if(data()->initVersion<13) {
+               if(data()->initVersion<12) {
+               if(data()->initVersion<10) {
+               if(data()->initVersion<9) {
+                  data()->sendtolibreview=data()->uselibre;
+                  if(data()->initVersion<8) {
+                     LOGGER("initVersion=%d\n",data()->initVersion);
+                     if(data()->initVersion<7) { 
+                        if(data()->initVersion<6) {
+                           if(data()->initVersion<4) {
+                              if(data()->varcount==0) {
+                                 data()->roundto=1.0f;
 
 
-										mklabels();
-										mkalarms();
-										/*
-										extern bool iswatch;
-										if(iswatch) {
-											data()->orientation=1;
-											data()->invertcolors=true;
-											}
-										else {
-											data()->orientation=8;
-											}*/
-					#ifdef WEAROS
-										data()->orientation=1;
-					#else
-										data()->orientation=8;
-					#endif
+                                 mklabels();
+                                 mkalarms();
+                                 /*
+                                 extern bool iswatch;
+                                 if(iswatch) {
+                                    data()->orientation=1;
+                                    data()->invertcolors=true;
+                                    }
+                                 else {
+                                    data()->orientation=8;
+                                    }*/
+                  #ifdef WEAROS
+                                 data()->orientation=1;
+                  #else
+                                 data()->orientation=8;
+                  #endif
 
-										data()->fixatey=true;
-										data()->systemUI=true;
-										}
-									data()->setdefault();
-									};
-								data()->flash=false;
-								}
-							data()->usexdripwebserver=false;
-					#ifdef CARRY_LIBS
-							data()->havelibrary=true;
-					#endif
-					#ifdef WEAROS
-							data()->invertcolors=true;
-							data()->usegarmin=false;
-					#else
-							data()->usegarmin=true;
-					#endif
-							}
+                                 data()->fixatey=true;
+                                 data()->systemUI=true;
+                                 }
+                              data()->setdefault();
 
-						setdisturbs();
-						data()->balanced_priority=true;
-						}
-					}
-					data()->triedasm=false;
-					data()->asmworks=false;
-					}
+                              };
+                           data()->flash=false;
+                           }
+                        data()->usexdripwebserver=false;
+                  #ifdef CARRY_LIBS
+                        data()->havelibrary=true;
+                  #endif
+                  #ifdef WEAROS
+                        data()->invertcolors=true;
+                        data()->usegarmin=false;
+                  #else
+                        data()->usegarmin=true;
+                  #endif
+                        }
 
-					if(data()->libre2NUMiter<1) data()->libre2NUMiter=1;
-					if(data()->libre3NUMiter<1) data()->libre3NUMiter=1;
-					}
-				if(data()->xinfuus) {
-					strcpy(data()->librelinkBroadcast.name[0], "com.eveningoutpost.dexdrip");
-					data()->librelinkBroadcast.nr=1;
-					}
-				data()->xdripBroadcast.nr=data()->xdripbroadcast;
-				data()->glucodataBroadcast.nr=data()->jugglucobroadcast;
-				}
+                     setdisturbs();
+                     data()->balanced_priority=true;
+                     }
+                  }
+                  data()->triedasm=false;
+                  data()->asmworks=false;
+                  }
 
-			data()->libreaccountIDnum=-1LL;
-		     }
-			data()->sslport=17581;
-		     }
-		   }
-		   data()->libreinit=0; //reinit during switch to 2.10.1
-		   }
-		   /*
-		 if(!strcasecmp(country,"GB")) {
-			data()->libreviewDeviceID[0]='\0';
-		   	data()->libreinit=0; 
-			data()->librecountry=3;
-			}
-		else {
-			 if (!strcasecmp(country, "FR")) {
-				 data()->libreviewDeviceID[0] = '\0';
-				 data()->libreinit = 0;
-				 data()->librecountry = 4;
-			 } else {
-				 data()->librecountry = data()->libreunit;
-			 }
-		 } */
-		 data()->librecountry = data()->libreunit;
-		}
-		data()->nightinterval=270;
-		}
+                  if(data()->libre2NUMiter<1) data()->libre2NUMiter=1;
+                  if(data()->libre3NUMiter<1) data()->libre3NUMiter=1;
+                  }
+               if(data()->xinfuus) {
+                  strcpy(data()->librelinkBroadcast.name[0], "com.eveningoutpost.dexdrip");
+                  data()->librelinkBroadcast.nr=1;
+                  }
+               data()->xdripBroadcast.nr=data()->xdripbroadcast;
+               data()->glucodataBroadcast.nr=data()->jugglucobroadcast;
+               }
+
+            data()->libreaccountIDnum=-1LL;
+              }
+            data()->sslport=17581;
+              }
+            }
+
+          data()->libreinit=0; //reinit during switch to 2.10.1
+            }
+            /*
+          if(!strcasecmp(country,"GB")) {
+            data()->libreviewDeviceID[0]='\0';
+               data()->libreinit=0; 
+            data()->librecountry=3;
+            }
+         else {
+             if (!strcasecmp(country, "FR")) {
+                data()->libreviewDeviceID[0] = '\0';
+                data()->libreinit = 0;
+                data()->librecountry = 4;
+             } else {
+                data()->librecountry = data()->libreunit;
+             }
+          } */
+          if(country&&!strcasecmp(country,"RU")) {
+            data()->librecountry=5;
+            }
+         else
+             data()->librecountry = data()->libreunit;
+         }
+         data()->nightinterval=270;
+         }
+         movebroadcast();
+   
+         }
+
 	setconvert(country);
 
 	 showui=getui();

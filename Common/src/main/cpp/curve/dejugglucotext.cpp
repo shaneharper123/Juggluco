@@ -82,7 +82,8 @@ jugglucotext detext {
 .sensorstarted= "Gestartet:",
 .lastscanned="Zuletzt gescannt:",
 .laststream="Letzter Stream:",
-.sensorends="Endet: ",
+.sensorends="Endet offiziell:",
+ .sensorexpectedend="Erwartetes Ende:",
 #ifndef WEAROS
 .newamount="Neue Menge",
 .averageglucose="Durchschnittliche Glukose: ",
@@ -99,7 +100,12 @@ jugglucotext detext {
 "Uhren",
 "Sensor",
 "Einstellungen",
+
+#if defined(SIBIONICS)
+"Sibionics",
+#else
 "About",
+#endif
 "Schließen",
 "Alarm stoppen"
 },
@@ -166,9 +172,10 @@ detext.newamount,
 .Falling="Fällt",
 .Stable="Ändert sich langsam",
 .Rising="Steigt",
-.RisingQuickly="Steigt rasch"
+.RisingQuickly="Steigt rasch",
 
 #endif
+.receivingpastvalues="Alte Glukosewerte kommen rein"
 		}
 
 

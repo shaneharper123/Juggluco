@@ -19,8 +19,9 @@
 /*      Fri Jan 27 12:35:09 CET 2023                                                 */
 
 
-#ifndef GLUCOSEHISTORY_H
-#define GLUCOSEHISTORY_H
+//#ifndef GLUCOSEHISTORY_H
+//#define GLUCOSEHISTORY_H
+#pragma once
 //#include <filesystem>
 
 #include <sys/mman.h>
@@ -44,7 +45,7 @@
 inline int getpagesize(void) {
   return sysconf(_SC_PAGESIZE);
 } */
-
+#include "config.h"
 
 #include "inout.h"
 
@@ -57,11 +58,43 @@ inline int getpagesize(void) {
 //#include "datbackup.h"
 #include "maxsendtohost.h"
 #include "settings/settings.h"
+#include "timevalues.h"
 inline	constexpr const char rawstream[]="rawstream.dat";
 #include <string_view>
 extern std::string_view globalbasedir;
 //string basedir(FILEDIR);
-constexpr int maxminutes=22000;
+
+extern int writeStartime(crypt_t *pass, const int sock, const int sensorindex); 
+
+
+constexpr int maxdays=
+#ifdef TESTLONGSI
+50;
+#else
+30;
+#endif
+constexpr const int stdMaxDaysSI=24;
+constexpr const int maxdaysSI=
+
+#ifdef TESTLONGSI
+maxdays;
+#else
+stdMaxDaysSI;
+#endif
+constexpr int maxminutes=maxdays*24*60;
+constexpr const int maxSIhours=
+#ifdef TESTLONGSI
+maxdaysSI*60*60*24;
+#else
+572;
+#endif
+/*constexpr const int maxSIhours=
+#ifndef NOLOG
+maxdaysSI*24
+#else
+572
+#endif
+; */
 struct ScanData {uint32_t t;int32_t id;int32_t g;int32_t tr;float ch;
  uint16_t getmgdL() const { return g;};
  float getmmolL() const { return g/convfactordL;};
@@ -129,15 +162,16 @@ void unSetLibreSend() {
 	}
 	*/
 bool valid() const {
-	return glu[1]&&glu[1]>380&&glu[1]<5020&&id>=0&&id<maxminutes&&time>1598911200u&&time<2145909600u;
+	return glu[1]&&glu[1]>380&&glu[1]<5020&&id>=0&&time>1598911200u&&time<2145909600u;
 	}
 };
 class SensorGlucoseData {
 bool haserror=false;
 string sensordir;
 //inline static  const string basedir{FILEDIR};
-inline static const int blocksize=getpagesize();
-
+public:
+inline static const int blocksize=sysconf(_SC_PAGESIZE);
+private:
 static constexpr uint16_t defaultinterval=15*60;
 
 struct updatestate {
@@ -148,7 +182,8 @@ struct updatestate {
 	bool changedhistorystart:1;
 	bool sendKAuth:1;
 	bool sendhiststart:1;
-	uint8_t rest:2;
+   bool siScan:1;
+   bool siStream:1;
 	};
 static inline constexpr const int deviceaddresslen=18;
 struct Info {
@@ -163,27 +198,50 @@ uint16_t pollstart;
 uint8_t dupl:7;
 bool uselater:1;
 uint8_t days:7;
-bool auth12removed:1;
-//uint32_t reserved2[2];
-uint32_t pin;
+bool sibionics:1;
+union {
+  uint32_t pin;
+  struct {
+  	uint16_t warmup;
+  	uint16_t wearduration;
+	
+  };};
 uint16_t lastLifeCountReceived;
 uint16_t lastHistoricLifeCountReceivedPos;
-struct { int len;
+struct { 
+   int len;
 	signed char data[8];
 	} ident;
-struct { 
-	int len;
-	signed char data[6];
-	} info;
-uint32_t bluestart;	
 union {
-	struct { int len;
-		signed char data[6];
-		uint8_t sensorgenDONTUSE;
-		bool reserved2;
-		} blueinfo;
-	uint8_t streamingAuthenticationData[12];
+struct {
+   struct { 
+      int len;
+      signed char data[6];
+      int16_t extra;
+      } info;
+	struct {
+		uint32_t bluestart;	
+		union {
+			struct { int len;
+				signed char data[6];
+				uint8_t sensorgenDONTUSE;
+				bool reserved2;
+				} blueinfo;
+			uint8_t streamingAuthenticationData[12];
+			};
+		};
+      };
+
+
+   struct {
+       char siBlueToothNum[9];
+       char siBetween;
+       uint8_t siDeviceNamelen;
+       char8_t siToken;
+       char8_t siDeviceName[16];
+
 	};
+    };
 uint32_t pollcount;
 double pollinterval; 
 uint32_t lockcount;
@@ -208,7 +266,14 @@ uint16_t libreviewnotsend:14;
 bool prunedstream:1;
 bool putsensor:1;
 updatestate update[std::max(maxsendtohost,8)];
-uint8_t kAuth[149];
+union {
+   uint8_t kAuth[149];
+   struct {
+      uint32_t siIdlen;
+      char8_t siId[68];
+      char8_t reservedS[77];
+      } __attribute__ ((packed)); //sizeof=4 element and non multiple of 4
+   }; 
 bool haskAuth;
 uint16_t nightiter;
 uint32_t libreCurrentIter;
@@ -216,8 +281,24 @@ int16_t scanoff;
 uint16_t endStreamhistory; 
 uint16_t startedwithStreamhistory; 
 uint16_t libreviewnotsendHistory;
-bool sendLibre[15*24*4];
-void clearLibreSend(int end) {
+union {
+struct {
+   bool oldsendLibre[15*24*4];
+   uint16_t oldhealthconnectiter;
+   };
+struct {
+   bool sendLibre[20*24*4];
+   uint16_t healthconnectiter;
+   };
+};
+
+void clearLibreSendEnd(int start) {
+	const int len=(int)sizeof(sendLibre)-start*sizeof(sendLibre[0]);
+	LOGGER("clearLibreSendEnd(%d) sizeof(sendLibre)=%d len=%d\n",start,sizeof(sendLibre),len);
+	if(len>0)
+		bzero(sendLibre+start,len);
+	}
+void clearLibreSendAll() {
 	bzero(sendLibre,sizeof(sendLibre));
 	}
 bool isLibreSend(int pos ) const {
@@ -231,7 +312,7 @@ void unSetLibreSend(int pos) {
 	}
 
 bool infowrong() const {
-	if(days<10||days>16)
+	if(days<10||days>maxdays)
 		return true;	
 	if(starttime<1583013600)
 		return true;
@@ -265,23 +346,25 @@ const size_t scansize;
 Mmap<ScanData> scans,polls;
 Mmap<std::array<uint16_t,16>> trends;
 //static constexpr int getinfo()->dupl=3,days=15;
-const int nrunits(int perhour=4)  {
+const int historybytes(int perhour=4)  {
 	if(!getinfo()) {
-		LOGSTRING("nrunits no getinfo\n");
+		LOGSTRING("historybytes no getinfo\n");
 		haserror=true;
 		return 0;
 		}
-	LOGSTRING("nrunits\n");
-//	if(error()) return 0;
-	const auto elsize=getelsize();
+    const auto elsize=getelsize();
+	LOGAR("historybytes");
+#ifndef SIHISTORY
+        if(isSibionics()) return 4*elsize;
+#endif
 	const auto days=getinfo()->days;
-	if(elsize<10||elsize>20||days<14||days>20) {
-		LOGGER("nrunits error elsize=%d days=%d\n",elsize,days);
+	if(elsize<10||elsize>20||days<14||days>maxdays) {
+		LOGGER("historybytes error elsize=%d days=%d\n",elsize,days);
 		haserror=true;
 		return 0;
 		}
 	int res= elsize*days*24*perhour;
-	LOGGER("nrunits %d\n",res);
+	LOGGER("historybytes %d\n",res);
 	return res;
 	}
 	/*
@@ -299,6 +382,8 @@ std::mutex mutex;
 int getsensorgen() const {
 //	return getinfo()->blueinfo.sensorgen;
 	const data_t *info=getpatchinfo();
+   if(!info->length())
+      return 0;
 	return getgeneration((const char *)info->data());
 	}
 void setsensorgen() {
@@ -318,8 +403,19 @@ const int glucosebytes()const {
 	}
 bool waiting=true;
 const int32_t maxpos() const {
+  if(isSibionics())
+     return maxSIhours*perhour();
 	return getinfo()->days*24*perhour();
 	}
+const int32_t maxstreampos() const {
+  constexpr const int streamperhour=60;
+  if(isSibionics())
+     return maxSIhours*streamperhour;
+   auto days=getinfo()->days;
+   if(days<15)
+      days=15;
+   return days*24*streamperhour;
+   }
 int streamingIsEnabled() const{
 	return getinfo()->streamingIsEnabled;
 	}
@@ -383,6 +479,21 @@ int getmininterval() const {
 const int perhour() const {
 	return 60/getmininterval();
 	}
+int getweardurationMIN() const {
+   if(isLibre2()) {
+	   int wear=getinfo()->wearduration;
+      if(wear)
+         return wear;
+      }
+   return 14*24*60;
+   } 
+int getweardurationSEC() const {
+   return getweardurationMIN() *60;
+   }
+uint32_t officialendtime() const {
+	return getstarttime()+getweardurationSEC();
+	}
+	
 uint32_t getmaxtime() const {
 /*
 	if(isLibre3()) {
@@ -393,7 +504,8 @@ uint32_t getmaxtime() const {
 	#endif
 		}
 	else */
-	return getinfo()->days*24*60*60+getstarttime();
+   const int hours=isSibionics()?maxSIhours:getinfo()->days*24;
+	return hours*60*60+getstarttime();
 	}
 uint32_t getstarttime() const {
 	return getinfo()->starttime;
@@ -477,7 +589,7 @@ bool savenewhistory(int pos, int lifeCount, uint16_t mgL) {
 
 #ifndef NOLOG
 		const auto wastime=lifeCount2time(lifeCount);
-		LOGGER("savenewhistory(%d,%d,%.1f) known %s",pos,lifeCount,mgL/180.0f,ctime(&wastime));
+		LOGGER("savenewhistory(%d,%d,%.1f) known %s",pos,lifeCount,mgL/convfactor,ctime(&wastime));
 	#endif
 		return false;
 		}
@@ -485,7 +597,7 @@ bool savenewhistory(int pos, int lifeCount, uint16_t mgL) {
 	item->time=wastime;
 	item->id=lifeCount;
 	item->glu[1]=mgL;
-	LOGGER("savenewhistory(%d,%d,%.1f) %s",pos,lifeCount,mgL/180.0f,ctime(&wastime));
+	LOGGER("savenewhistory(%d,%d,%.1f) %s",pos,lifeCount,mgL/convfactor,ctime(&wastime));
 //        saveel(pos,wastime,lifeCount, {0,mgL});
 	return true;
 	}
@@ -509,16 +621,24 @@ uint32_t sputnikglucose(int pos)const  {
 int gettimepos(uint32_t time)const {
 	return ( int)round(((double)time-getinfo()->starttime)/getinfo()->interval);
 	}
-int getlastnotbeforetime(uint32_t time)const {
-	int pos=gettimepos(time);
+int getfirstnotbeforetime(uint32_t time)const {
+	const int pos=gettimepos(time);
 	int newpos=pos;
 	const int start=getstarthistory(); 
 	const int end=getAllendhistory() ;
-	if(pos<start)
-		return start;
-	if(pos>end)
-		return end;
-	for(;newpos>=start;--newpos) {
+	if(newpos<start) {
+		newpos=start;
+		}
+	else  {
+		if(newpos>end)  {
+			if(end<=0) 
+				newpos=0;
+			else
+				newpos=end-1;
+			}
+		}
+	LOGGER("getfirstnotbeforetime start=%d end=%d newpos=%d\n",start,end,newpos);
+	for(;newpos>start;--newpos) {
 		const Glucose* gl= getglucose(newpos);
 		if(!gl->valid())
 			continue;
@@ -533,14 +653,16 @@ int getlastnotbeforetime(uint32_t time)const {
 			break;
 		}
 	#ifndef NOLOG
+	LOGGER("getfirstnotbeforetime newpos=%d\n",newpos);
 	time_t tim=time;
 	time_t gltime;
 	const Glucose*gl;
-	if(newpos<end&&(gl= getglucose(pos))&&gl->valid())
+	if(newpos<end&&(gl= getglucose(newpos))&&gl->valid())
 		gltime=gl->gettime();
 	else
 		gltime=0;
-	LOGGER("getlastnotbeforetime pos=%d newpos=%d time=%.24s lastbefore %s",pos,newpos,ctime(&gltime),ctime(&tim));
+	char glbuf[27],buf[27];
+	LOGGER("getfirstnotbeforetime pos=%d newpos=%d time=%.24s lastbefore %s",pos,newpos,ctime_r(&gltime,glbuf),ctime_r(&tim,buf));
 	#endif
 	return newpos;
 	}
@@ -589,10 +711,18 @@ bool hasbluetooth() const {
 	return getinfo()->bluestart!=bluestartunknown;
 	}
 bool canusestreaming() const {
- 	return  isLibre3()||hasbluetooth();
+ 	return  isSibionics()||isLibre3()||hasbluetooth();
  //	return  hasbluetooth();
 	}
 
+const sensorname_t * othershortsensorname() const {
+	if(isSibionics()) {
+       const char *name=(char *)&getinfo()->siToken;
+       if(*name)
+	         return reinterpret_cast<const sensorname_t *>(name);
+      }
+	return reinterpret_cast<const sensorname_t *>(sensordir.data()+sensordir.length()-11);
+	}
 
 //typedef array<char,11>  sensorname_t;
 const sensorname_t * shortsensorname() const {
@@ -603,10 +733,14 @@ const longsensorname_t * sensorname() const {
 	return reinterpret_cast<const longsensorname_t *>(sensordir.data()+sensordir.length()-16);
 	}
 std::string_view showsensorname() const {
-	if(isLibre3()) 
-		return std::string_view(sensordir.data()+sensordir.length()-9,9);
-	else
-		return std::string_view(shortsensorname()->data(),11);
+	if(isSibionics()) 
+	      return std::string_view((char *)getinfo()->siDeviceName,getinfo()->siDeviceNamelen);
+     else {
+      if(isLibre3()) 
+         return std::string_view(sensordir.data()+sensordir.length()-9,9);
+      else
+         return std::string_view(shortsensorname()->data(),11);
+        }
 	}
 	/*
 static int getgeneration(const char *info) {
@@ -632,7 +766,10 @@ static int getgeneration(const char *info) {
 
 
 
-static bool mkdatabase(string_view sensordir,time_t start,const  char *uid,const  char *infodat,uint8_t days=15,uint8_t dupl=3,uint32_t bluestart=0,const char *blueinfo=nullptr,uint16_t secinterval=defaultinterval) {
+static bool mkdatabase(string_view sensordir,time_t start,const  char *uid,const  char *infodat,const timevalues *timesptr,uint8_t dupl=3,uint32_t bluestart=0,const char *blueinfo=nullptr,uint16_t secinterval=defaultinterval) {
+     const uint16_t wear=timesptr->wear;
+     const uint8_t days=wear/(60*24)+1;
+
      LOGGER("mkdatabase %s,%s",sensordir.data(),ctime(&start));
        int gen=getgeneration(infodat);
 //	pathconcat  sensordir{basedir,sensorid};
@@ -647,7 +784,7 @@ static bool mkdatabase(string_view sensordir,time_t start,const  char *uid,const
 				return false;
 			}
 		}
-       Info inf{.starttime=(uint32_t)start,.lastscantime=inf.starttime,.starthistory=0,.endhistory=0,.scancount=0,.startid=0,.interval=secinterval,.dupl=dupl,.days=days , .pollcount=0, .lockcount=0};
+       Info inf{.starttime=(uint32_t)start,.lastscantime=inf.starttime,.starthistory=0,.endhistory=0,.scancount=0,.startid=0,.interval=secinterval,.dupl=dupl,.days=days ,.warmup=timesptr->warmup,.wearduration=wear, .pollcount=0, .lockcount=0};
 	inf.ident.len=8;
 //		memcpy(&inf.ident.data,uid,8);
 	memcpy(inf.ident.data,uid,8);
@@ -671,23 +808,20 @@ static bool mkdatabase(string_view sensordir,time_t start,const  char *uid,const
 	settings->data()->haslibre2=true;
 	return true;
 	}
-	/*
-static pathconcat namelibre3(const std::string_view sensorid) {
-	char sendir[17]="E07A-XXX";              
-	const int totsens=16;
-	const int len=sensorid.length();
-	memcpy(sendir+totsens-len,sensordir.data(),len);
-	sendir[totsens]='\0';
-	return pathconcat(basedir,std::string_view(sendir,totsens));
-	} */
 /*
 E007-0M0063KNUJ0
 E07A-XX068ZMRF18              
 E07A-000T3YL1R50
 */
- bool isLibre3() const {
-	return getinfo()->interval==interval5;
+ bool isSibionics() const {
+	return getinfo()->sibionics;
 	}
+ bool isLibre3() const {
+	return !isSibionics()&&(getinfo()->interval==interval5);
+	}
+ bool isLibre2() const {
+   return !isSibionics()&&!isLibre3();
+   }
 	/*
  bool libreviewable() const {
 	return !isLibre3()&&pollcount();
@@ -713,8 +847,36 @@ static bool mkdatabase3(string_view sensordir,time_t start,uint32_t pin,const ch
 		
 	writeall(infoname,&inf,sizeof(inf));
 
-	//	settings->data()->haslibre2=libre2;
 	settings->data()->haslibre3=true;
+
+	return true;
+	}
+static bool mkdatabaseSI(string_view sensordir,string_view sensorgegs,uint32_t now,bool hasnum) {
+     LOGGER("mkdatabaseSI %s,%s\n",sensordir.data(),sensorgegs.data());
+	mkdir(sensordir.data(),0700);
+	pathconcat infoname(sensordir,infopdat);
+	if(access(infoname,F_OK)!=-1)  {
+		Readall<uint8_t> inf(infoname);
+		if(inf.data()&&inf.size()>=sizeof(Info)) {
+			const Info *in=reinterpret_cast<const Info*>(inf.data());
+			if(in->pollcount&&in->starttime>1700000000&&in->dupl>0&&in->sibionics)
+				return false;
+			}
+		}
+	uint32_t start=now;
+	//TODO other days
+       Info inf{.starttime=(uint32_t)start,.lastscantime=(uint32_t)start,.starthistory=0,.endhistory=0,.scancount=0,.startid=0,.interval=interval5,.dupl=3,.days=maxdaysSI ,.sibionics=true,.lastLifeCountReceived=0,.pollcount=0,.pollinterval=88.0, .lockcount=1};
+       inf.siIdlen=sensorgegs.size();
+       memcpy(inf.siId,sensorgegs.data(),inf.siIdlen);
+       if(hasnum) {
+	       memcpy(inf.siBlueToothNum,sensorgegs.end()-12,8);
+		}
+	else {
+	       memcpy(inf.siBlueToothNum,&sensorgegs[28],8);
+		}
+	inf.siBlueToothNum[8]='\0';
+		
+	writeall(infoname,&inf,sizeof(inf));
 
 	return true;
 	}
@@ -754,19 +916,22 @@ bool bluetoothback() {
 	}
 
 
-
+bool unused() const {
+	const auto *info=getinfo();
+	return info->pollcount==0&&info->scancount==0&&info->endhistory==0;
+	}
 private:
 size_t maxscansize()  {
+   if(isSibionics()||isLibre3()) return 4;
+	if(!getinfo()) 	 {
+		LOGAR("maxscansize()  getinfo()==null");
+		haserror=true;
+		return 0;
+		}
 	const int days=	std::max((int)getinfo()->days,15);
 	const int scanblocks=ceil((40*days*sizeof(ScanData))/blocksize);
         int used=getinfo()->scancount*sizeof(ScanData);
         int past= getAllendhistory()-getinfo()->starthistory;
-	/*
-	if(past<0||used<0) {
-		LOGGER("past=%d used=%d\n",past,used);
-		haserror=true;
-		return 0;
-		} */
 	int take;
 	int maxp=maxpos();
 	if(maxp<past)
@@ -797,11 +962,14 @@ pathconcat polluit;
  pathconcat histpath;
  pathconcat scanpath;
  pathconcat trendspath;
+
+
+
  static constexpr const char trendsdat[]="trends.dat";
-SensorGlucoseData(string_view sensordir,int spec,string_view baseuit): sensordir(sensordir),meminfo(sensordir,infopdat,sizeof(struct Info)),historydata(sensordir,"data.dat",getinfo()?nrunits(perhour()):(haserror=true,0)),
+SensorGlucoseData(string_view sensordir,int spec,string_view baseuit): sensordir(sensordir),meminfo(sensordir,infopdat,sizeof(struct Info)),historydata(sensordir,"data.dat",getinfo()?historybytes(perhour()):(haserror=true,0)),
 scansize(maxscansize()),
 scans(sensordir,"current.dat",scansize),
-polls(sensordir,"polls.dat",21600),
+polls(sensordir,"polls.dat",maxstreampos()),
 trends(sensordir,trendsdat,scansize),
 specstart(spec),
  polluit(baseuit, "polls.dat"),
@@ -809,7 +977,12 @@ specstart(spec),
  updateinfopath(baseuit, "updateinfo.dat"),
  histpath(baseuit, "data.dat"),
  scanpath(baseuit, "current.dat"),
- trendspath(baseuit, trendsdat)
+ trendspath(baseuit, trendsdat),
+ statefile(sensordir,"state.json")
+
+#ifdef SIHISTORY
+ ,statefile3(sensordir,"state3.json")
+#endif
 {
 if(error()) {
 	LOGSTRING("SensorGlucoseData Error\n");
@@ -833,20 +1006,46 @@ if(const ScanData *last=lastpoll()) {
 			}
 		}
 	}
-LOGGER("getinfo()->lastHistoricLifeCountReceivedPos=%d\n", getinfo()->lastHistoricLifeCountReceivedPos);
-if(!getinfo()->lastHistoricLifeCountReceivedPos)
-	getinfo()->lastHistoricLifeCountReceivedPos=12;
-LOGGER("SensorGlucoseData %s %s scansize=%zu\n",sensordir.data(),scanpath.data(),scansize);
-
-    if(getinfo()->pollinterval<58.6||getinfo()->pollinterval>62.6)
-		getinfo()->pollinterval=60.5752;
-  if(!getinfo()->prunedstream) {
-	prunedata() ;
-	getinfo()->prunedstream=true;
-  	}
+   if(!isSibionics()) {
+      LOGGER("getinfo()->lastHistoricLifeCountReceivedPos=%d\n", getinfo()->lastHistoricLifeCountReceivedPos);
+      if(!getinfo()->lastHistoricLifeCountReceivedPos) getinfo()->lastHistoricLifeCountReceivedPos=12;
+      LOGGER("SensorGlucoseData %s %s scansize=%zu\n",sensordir.data(),scanpath.data(),scansize);
+      if(getinfo()->pollinterval<58.6||getinfo()->pollinterval>62.6) getinfo()->pollinterval=60.5752;
+      if(!getinfo()->prunedstream) {
+            prunedata() ;
+            getinfo()->prunedstream=true;
+            }
+       }
    }
 
 	public:
+template <typename T>
+std::string_view absToRel(T& absname) {
+	const auto start=globalbasedir.size()+1;
+	return std::string_view{absname.data()+start,absname.size()-start};
+	} 
+   /*
+std::string_view relstatefile() {
+	return absToRel(statefile);
+	}
+*/
+	/*
+template <typename T>
+const char * absToRel(T absname) {
+	const int start=globalbasedir.size()+1;
+	return absname.data()+start;
+	}
+const char * relstatefile() {
+	return absToRel(statefile);
+	} */
+pathconcat statefile;
+
+#ifdef SIHISTORY
+pathconcat statefile3;
+#endif
+
+
+
 SensorGlucoseData(string_view sensin,int specin): SensorGlucoseData(sensin, specin, std::string_view(sensin.data()+specin,sensin.size()-specin)) {
 	}
 	public:
@@ -854,7 +1053,7 @@ SensorGlucoseData(string_view sensin): SensorGlucoseData(sensin,globalbasedir.si
 	}
 //bool haserror=false;
 bool error() const {
-	if(!haserror&&meminfo.data()&& historydata.data()&&polls.data()&& (isLibre3()||(scans.data()&& trends.data())))
+	if(!haserror&&meminfo.data()&& historydata.data()&&polls.data()&& (isSibionics()||isLibre3()||(scans.data()&& trends.data())))
 		return false;	
 	return true;
 	}
@@ -885,6 +1084,8 @@ uint32_t getlastpolltime() const {
 
 uint32_t getlastpolltime() const {
 	const ScanData* start= polls.data();
+	if(!start)
+		return 0;
 	for(int i=pollcount()-1;i>=getinfo()->pollstart;--i) {
 		if(start[i].valid(i))
 			return start[i].t;	
@@ -946,6 +1147,12 @@ bool savepoll(time_t tim,int id,int glu,int trend,float change) {
 	return true;
 	}
 
+bool savestream(time_t tim,int id,int glu,int trend,float change) {
+	saveglucosedata(polls,getinfo()->pollcount,tim, id, glu, trend, change);
+	setSiIndex(id+1);
+	return true;
+	}
+
 void saveglucosedata(Mmap<ScanData> &scans,uint32_t &count,time_t tim,int id,int glu,int trend,float change) {
  	scans[count++]={static_cast<uint32_t>(tim),id,glu,trend,change};
 	}
@@ -974,7 +1181,7 @@ int savepollallIDsonly(time_t tim,const int id,int glu,int trend,float change) {
 			getinfo()->pollstart=id;	
 			}
 		}
-	LOGGER("count=%d savepollallIDsonly(%lu,%d,%.1f,%d,%.1f) %s",count,tim,id,glu/18.0,trend,change,ctime(&tim));
+	LOGGER("count=%d savepollallIDsonly(%lu,%d,%.1f,%d,%.1f) %s",count,tim,id,glu/convfactordL,trend,change,ctime(&tim));
 	polls[id]={static_cast<uint32_t>(tim),id,glu,trend,change};
 	return count;
 	}
@@ -1072,6 +1279,9 @@ const ScanData *lastpoll() const {
 const ScanData *getscan(int ind) const {
 	return scans.data()+ind;
 	}
+const ScanData *getstream(int ind) const {
+	return polls.data()+ind;
+	}
 static void exportscans(const char *file,int count,const ScanData *scans)  {
 	std::ofstream uit(file);
 	for(int i=0;i<count;i++) {
@@ -1151,7 +1361,6 @@ CurData  scanInperiod(const uint32_t starttime,const uint32_t endtime) const {
 
 
 dataonlyptr  getfromfile(crypt_t *pass,int sock, std::string_view filename,int offset,int asklen) {
-	LOGSTRING("GLU: getfromfile\n");
 	const int pathlen=filename.size()+1;
 	constexpr const int ali=alignof(struct askfile);
 	const int comlen=((sizeof(askfile)+(pathlen+ali-1))/ali)*ali;
@@ -1162,9 +1371,11 @@ dataonlyptr  getfromfile(crypt_t *pass,int sock, std::string_view filename,int o
 	ask->len= asklen;
 
 	ask->namelen=pathlen;
+
+	LOGGER("GLU: getfromfile(sock=%d %s offset=%d asklen=%d comlen=%d)\n",sock,filename.data(),offset,asklen,comlen);
 	memcpy(ask->name,filename.data(),pathlen);
 	if(!noacksendcommand(pass,sock,buf,comlen) ) {
-		LOGSTRING("GLU:  !noacksendcommand\n");
+		LOGAR("GLU:  !noacksendcommand");
 		return dataonlyptr(nullptr); 
 		}
 	return receivedataonly(sock,pass, asklen);
@@ -1195,13 +1406,13 @@ int posearlier(int pos,uint32_t starttime) {
 int getbackuptimestream(uint32_t starttime)  {
 	decltype(auto) poldat=getPolldata();
 	int pos=firstnotless(poldat,starttime)-beginpolls();
-	LOGGER("GLU: setbackuptimestream pos=%d\n",pos);
+	LOGGER("GLU: getbackuptimestream pos=%d\n",pos);
 	return pos;
 	}
 int  getbackuptimescan(uint32_t starttime)  {
 	decltype(auto) scandat=getScandata();
 	int pos=firstnotless(scandat,starttime)-&scandat[0];
-	LOGGER("GLU: setbackuptimescan pos=%d\n",pos);
+	LOGGER("GLU: getbackuptimescan pos=%d\n",pos);
 	return pos;
 	}
 	/*
@@ -1245,7 +1456,7 @@ uint32_t getbackuptimehistory(uint32_t starttime)  {
 		}
 #ifndef NOLOG
 	time_t tim=starttime;
-	LOGGER("GLU: setbackuptimehistory pos=%d %s",pos,ctime(&tim));
+	LOGGER("GLU: getbackuptimehistory pos=%d %s",pos,ctime(&tim));
 #endif
 	return pos;
 	}
@@ -1370,6 +1581,37 @@ sendscan:
 1: also via stream
 2: also via scan
 */
+
+int sendjson(crypt_t *pass,int sock,int ind)  {
+	int waslock=getinfo()->lockcount;
+	if(getinfo()->update[ind].rawstreamstart<waslock) {
+#ifdef SIHISTORY
+      pathconcat *files[]={&statefile, &statefile3};
+		for(auto *sfile:files)
+#else
+		const auto *sfile = &statefile;
+#endif
+
+      {
+          const char *statename=sfile->data();
+         Readall<unsigned char> json(statename);
+         if(!json.data()||!json.size()) {
+            LOGGER("GLU: %s doesn't exist\n",statename);
+            return 2;
+            }
+         const auto relstate=absToRel(*sfile);
+         LOGGER("statefile=%s\n",statename);
+         if(!senddata(pass,sock,0,json.data(),json.size(),relstate)) {
+            LOGGER("GLU: senddata %s failed\n",relstate.data());
+            return 0;
+            }
+         }
+		getinfo()->update[ind].rawstreamstart=waslock;
+		return 1;	
+		}
+	return 2;
+	}
+
 int updatestream(crypt_t *pass,int sock,int ind,int sensindex,int sendscan)  {
 	getinfo()->update[ind].changedstreamstart=false;
 	int streamstart=getinfo()->update[ind].streamstart;
@@ -1390,7 +1632,7 @@ int updatestream(crypt_t *pass,int sock,int ind,int sensindex,int sendscan)  {
 #ifndef NOLOG
 		const struct ScanData *fn=startstreambuf+streamstart;
 		time_t tim=fn->t;
-		LOGGER("GLU: streamstart=%d streamend=%d %s %.1f (%d) dowith=%d %s",streamstart,streamend,polluit.data(),fn->g/18.0,fn->g,cmd,ctime(&tim));
+		LOGGER("GLU: streamstart=%d streamend=%d %s %.1f (%d) dowith=%d %s",streamstart,streamend,polluit.data(),fn->g/convfactordL,fn->g,cmd,ctime(&tim));
 #endif
 
 		if(!senddata(pass,sock,streamstart,startstreambuf+streamstart,startstreambuf+streamend,polluit)) {
@@ -1440,15 +1682,34 @@ int updatestream(crypt_t *pass,int sock,int ind,int sensindex,int sendscan)  {
 				vect.reserve(1);
 				break;
 			};
-		if(sendhiststart) {
-			vect.push_back({reinterpret_cast<const senddata_t *>(&getinfo()->starthistory),offsetof(Info,starthistory),sizeof(getinfo()->starthistory)});
-			}
 		vect.push_back({reinterpret_cast<uint8_t*>(&pollinfo),off,len});
-		if(wrotehistory) {
-			vect.push_back({reinterpret_cast<const senddata_t *>(&endinfo),offsetof(Info,endStreamhistory),sizeof(endinfo)});
-			}
+	  bool updateStarttime=false;
+	      if(isSibionics()&&!getinfo()->update[ind].siStream&&getinfo()->siDeviceName[0]&&
+                                 getinfo()->deviceaddress[0]&&
+                                 getinfo()->siDeviceNamelen>3) {
+			updateStarttime=true;
+      			LOGAR("updateStream send starttime, deviceName and deviceAddress");
+			vect.push_back({reinterpret_cast<const senddata_t *>(&getinfo()->starttime),offsetof(Info,starttime),4});
+			vect.push_back({reinterpret_cast<const senddata_t *>(&getinfo()->siDeviceNamelen),offsetof(Info,siDeviceNamelen),18});
+			vect.push_back({reinterpret_cast<const senddata_t *>(getinfo()->deviceaddress),offsetof(Info,deviceaddress),deviceaddresslen});
+         }
+        else {
+         if(sendhiststart) {
+            vect.push_back({reinterpret_cast<const senddata_t *>(&getinfo()->starthistory),offsetof(Info,starthistory),sizeof(getinfo()->starthistory)});
+            }
+            if(wrotehistory) {
+               vect.push_back({reinterpret_cast<const senddata_t *>(&endinfo),offsetof(Info,endStreamhistory),sizeof(endinfo)});
+               }
+           }
 		 if(!senddata(pass,sock,vect, infopath,cmd,reinterpret_cast<const uint8_t *>(&streamstart),sizeof(streamstart))) {
 			LOGSTRING("GLU: senddata info.data failed\n");
+			return 0;
+			}
+		if(updateStarttime) {
+			if(writeStartime(pass,sock,sensindex))  {
+				getinfo()->update[ind].siStream=true;
+				return 1;
+				}
 			return 0;
 			}
 
@@ -1508,6 +1769,17 @@ time_t lifeCount2time(uint32_t lifecount) {
 bool sensorerror=false;
 bool replacesensor=false;
 std::vector<int>viewed;
+int getSiIndex() const {
+	return getinfo()->lockcount;
+	}
+void setSiIndex(int index)  {
+	getinfo()->lockcount=index;
+	}
+
+uint32_t receivehistory=0;
+int retried=0;
+bool scannedAddress=false;
+int broadcastfrom=INT_MAX;
 };
 
 struct lastscan_t {
@@ -1515,5 +1787,5 @@ struct lastscan_t {
 	const ScanData *scan;
 	uint32_t showtime;
 	};
-#endif
+//#endif
 

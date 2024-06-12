@@ -1,8 +1,42 @@
+Betere barcode scanner, keuze optie?
+
+Remove start and stop search for sensors.
+Add scanning sound
+Simple WearOS manual.
+Simple Libre3 manual.
+Verwijderen files die niet gebruikt worden.
+Parallel sibionics in manual
+Meer strings vertaalbaar:
+Meerdere alarmen?
+Refer to direct watch manual.
+
+Send from watch to Libreview
+
+try out updates
+Complete OpenGL mirror version for windows, Linux, IOS and AsteroidOS
+	AsteroidOS Bluetooth, NFC
+Simplified version that immediately updates values, instead of dependence on poll frequency.
+
+Iets met instellen IOB:
+	- Instellen variabele categorien?
+	- Verschillende typen insuline
+	- ga geen nummers af als er geen Insuline category bestaat.
+
+Help:
+	- uploader, broadcast. Bij langzame hologe/telefoon kan android device laten slapen voordat alles afgehandeld wordt.
+	Verander inleidende tekst:
+
+Version for Android Wear and Huawei watch 4 and ColorOS?
+- Of grootte testen en WearOS opmaak gebruiken.
+- Speciale compile for watch?
+
+Use libreids for web server and uploads.
+
+Add NFC/Bluetooth glucose meters?
 IOB beter:
 	- langer dan 6 uur
 
 Watchdrip stoppen alarm?
-Naar Libreview vanout horloge?
 - Voorkomen dat oude waarden gezonden worden:
 	- Aangeven vanaf wanneer
 	- Informatie vanaf telefoon naar horloge
@@ -25,8 +59,6 @@ Ask leave without saving in:
 	-add connection
 	-settings
 TALK also in WearOS versie?
-Huawei Watch versie?
-Verwijder mmol/L uit widget
 Support Dexcom?
 Blind:
 	- Long press History read text too long
@@ -104,8 +136,7 @@ Oudheids indicator toevoegen aan zwevende glucose. Mogelijkheden:
 Do iets met libre3 events:
 - Remove?
 - LOG?
-Google Fit? Deprecated
-Health Connect? Encapsulated in Google Play and other restrictions.
+
 Test apps?
 make hostname option in mirror.
 send to tidepool

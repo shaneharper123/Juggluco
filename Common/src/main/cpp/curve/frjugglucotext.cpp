@@ -87,6 +87,7 @@ jugglucotext frtext {
 	.lastscanned="Dernier scan:",
 	.laststream="Dernier flux:",
 	.sensorends="Expiration capteur: ",
+	.sensorexpectedend="Expected to end: ",
 #ifndef WEAROS
 	.newamount="Nouvelle quantité",
 	.averageglucose="Glucose moyen: ",
@@ -103,7 +104,11 @@ jugglucotext frtext {
 		"Montre",
 		"Capteur",
 		"Paramètres",
-		"A propos",
+#if defined(SIBIONICS)
+"Sibionics",
+#else
+"A propos",
+#endif
 		"Fermer",
 		"Arrêt alarme"
 		},
@@ -174,8 +179,9 @@ requis. Dans votre cas le fichier suivant pose problème )",
 .Falling="Baisse",
 .Stable="Modification lente",
 .Rising="Augmentation",
-.RisingQuickly="Augmentation rapide"
+.RisingQuickly="Augmentation rapide",
 #endif
+        .receivingpastvalues="Receiving old values"
 		}
 
 

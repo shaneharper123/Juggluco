@@ -1,15 +1,14 @@
 <resources>
 <string name="NightPost" >
 <![CDATA[
-<p>Auf einen Nightscout-Server
-hochladen. 
-</p>
+<h1>Hochladen</h1>
 <p><span lang="de-DE">In den meisten Fällen können Sie auch den
 <a href="https://www.juggluco.nl/Jugglucohelp/de/Nightscouthelp.html">Webserver
 in Juggluco</a> oder <a href="https://www.juggluco.nl/Juggluco/cmdline">juggluco-server</a>
-verwenden. Nur AAPS und NSclient verweigern die Arbeit, wenn
-<a href="https://github.com/nightscout/cgm-remote-monitor">cgm-remote-monitor</a>
-nicht verbunden ist.</span></p>
+verwenden. Nur wenige Apps, die lediglich die Nightscout-Webseite
+anzeigen, benötigen <a href="https://github.com/nightscout/cgm-remote-monitor">cgm-remote-monitor</a>
+Sie können AAPS und AAPSClient sogar mit dem Webserver in Juggluco
+7.4.1 verwenden.</span></p>
 <p>Alle Stream-Werte werden im Moment ihres Eintreffens auf den
 Nightscout-Server hochgeladen. Wenn mehrere Sensoren verwendet
 werden, werden alle Werte aller Sensoren hochgeladen. Einige Garmin
@@ -24,9 +23,12 @@ z. B. https://myname.herokuapp.com:6789</p>
 <p><b>Aktiv</b> : Server einschalten</p>
 <p><b>Test V3</b>: Lassen Sie Juggluco api/v3 zum Hochladen auf
 Nightscout verwenden. Verwenden Sie es nicht zum Hochladen auf einen
-Nightscout-Server, der zuvor V2-Uploads empfangen hat, und senden Sie
-keine V2-Uploads an einen Nightscout-Server, der zuvor V3-Uploads
-empfangen hat.</p>
+Nightscout-Server, der zuvor V1-Uploads empfangen hat, und senden Sie
+keine V1-Uploads an einen Nightscout-Server, der zuvor V3-Uploads
+empfangen hat. Anstelle des api_secret müssen Sie ein Access Token
+(Zugriffstoken) mit der Berechtigung zum Hochladen von treatments und
+entries angeben. Sie können eines in der Nightscout-Web-Interface
+unter Admin Tools erstellen.</p>
 <p><span lang="de-DE"><b>Mengen</b></span> <span lang="de-DE"><b>geben</b></span><span lang="de-DE">:
 Auch Mengen als Behandlungen an Nightscout senden. Durch Berühren
 der Checkbox gelangen Sie zu einem Dialog, in dem Sie für jedes
@@ -106,14 +108,6 @@ haben sie mir ohne jede Benachrichtigung einfach die Domain
 weggenommen und als ich versuchte, sie erneut zu registrieren, hatte
 sie einen Preis. Sie können einen Hostnamen für ein paar Euro pro
 Jahr kaufen (zum Beispiel von <a href="https://www.strato.nl/domeinnaam">https://www.strato.nl/domeinnaam</a>).</span></p>
-<p style="line-height: 100%; margin-bottom: 0in"><span lang="de-DE">Wenn
-Sie die Schlüsseldateien von einer SSL-Autorität erhalten haben,
-müssen Sie diese an Juggluco weitergeben. Der Private Key kann durch
-Drücken von „</span><strong><span lang="de-DE"><i><span style="font-weight: normal">Privater
-Schlüssel</span></i></span></strong>“ <span lang="de-DE">eingelesen
-werden, die Full Chain durch Drücken von „</span><em><span lang="de-DE">Full
-Chain</span></em>“<span lang="de-DE">. </span>
-</p>
 <p style="line-height: 100%; margin-bottom: 0in">Nachdem Sie Certbot
 installiert und Port 80 (http) von Ihrem Modem auf Ihren Computer
 umgeleitet haben, können Sie einfach Folgendes drücken:</p>
@@ -127,6 +121,14 @@ ich Certbot verwendet hatte, fand ich den privaten Schlüssel in
 die vollständige Kette in
 /etc/letsencrypt/live/myhostname/fullchain.pem. &quot;</span><em><span lang="de-DE">myhostname</span></em><span lang="de-DE">&quot;
 ist der von mir verwendete Hostname.</span></p>
+<p style="line-height: 100%; margin-bottom: 0in"><span lang="de-DE">Wenn
+Sie die Schlüsseldateien von einer SSL-Autorität erhalten haben,
+müssen Sie diese an Juggluco weitergeben. Der Private Key kann durch
+Drücken von „</span><strong><span lang="de-DE"><i><span style="font-weight: normal">Privater
+Schlüssel</span></i></span></strong>“ <span lang="de-DE">eingelesen
+werden, die Full Chain durch Drücken von „</span><em><span lang="de-DE">Full
+Chain</span></em>“<span lang="de-DE">. </span>
+</p>
 <p style="line-height: 100%; margin-bottom: 0in"><span lang="de-DE">Wenn
 Sie nur Glukosewerte von einem Android zum anderen senden möchten,
 können Sie besser die <a href="https://www.juggluco.nl/Juggluco/index.html#mirror">Klonfunktion</a></span>
@@ -156,13 +158,13 @@ Juggluco 7.3.0 und höher verwendet werden. Dazu müssen Sie in AAPS
 <i>NSClientV3</i> mit den folgenden Einstellungen auswählen:</p>
 <ul>
 	<li><p style="line-height: 100%; margin-bottom: 0in">Verwenden Sie
-	als <i>NS-Zug</i><i>angs</i><i>token</i> das hier angegebene
-	api_secret.</p>
+	als <i>NS-Zugangstoken</i> das hier angegebene api_secret.</p>
 	<li><p style="line-height: 100%; margin-bottom: 0in">nicht gesetzt
 	„<i>Mit Websockets verbinden</i>“;</p>
 	<li><p style="line-height: 100%; margin-bottom: 0in">Deaktivieren
-	Sie unter „ <i>Synchronisierung“</i><span style="font-style: normal">
-	alle Uploads</span><i>. </i>Nur einschalten:</p>
+	Sie unter „ <i>Synchronisierung“</i><span style="font-variant: normal">
+	</span><span style="font-variant: normal"><span style="font-style: normal">alle
+	Uploads</span></span><i>. </i>Nur einschalten:</p>
 	<ul>
 		<li><p style="line-height: 100%; margin-bottom: 0in">Historische
 		CGM Daten ergänzen;</p>
@@ -180,7 +182,8 @@ Juggluco 7.3.0 und höher verwendet werden. Dazu müssen Sie in AAPS
 Mengen vor zuvor eingegebenen Mengen führt dazu, dass AAPS doppelte
 Behandlungen hat. Dies geschieht auch, wenn die v3-Schnittstelle mit
 einem Nightscout-Server verwendet wird, der v3-Uploads von Juggluco
-empfängt.</p>
+empfängt. Manchmal beginnt AAPS erst, den Server nach Behandlungen
+zu fragen, nachdem AAPS zwangsweise gestoppt und neu gestartet wurde.</p>
 <p style="line-height: 100%; margin-bottom: 0in">Der Webserver kann
 auch auf einem Linux-Rechner betrieben werden. Es erhält seine Daten
 von einer Klonverbindung von Juggluco, die mit dem Sensor verbunden
@@ -344,17 +347,17 @@ auf einem anderen Gerät. Um eine Verbindung herzustellen, muss einer
 der Juggluco\'s auf einem Port lauschen und der andere muss Kontakt zu
 diesem Port herstellen. Der Port, auf dem diese Instanz von Juggluco
 lauscht, wurde auf dem vorherigen Bildschirm angegeben (Linkes
-mittleres Menü-&gt; <a href="https://www.juggluco.nl/Jugglucohelp/de/connectionoverview.html">Klon</a>). Hier gibst du den Port an, mit dem diese
-Instanz von Juggluco Kontakt aufnimmt, wenn sie aktiv Kontakt
-aufnimmt. Wenn diese Instanz von Juggluco nicht auf einem Port
-lauschen kann, wählen Sie &quot;<b>Nur aktiv</b>&quot;. Wenn die
-andere Seite keinen Port abhören kann, wähle &quot;<b>Nur passiv</b>&quot;,
-andernfalls lasse &quot;<b>Beide</b>&quot; markiert. Der Juggluco auf
-der anderen Seite sollte &quot;<i>Nur passiv&quot; </i>angeben, wenn
-du hier <i>&quot;Nur aktiv&quot; </i>auswählst und &quot;<i>Nur
-aktiv&quot;</i>, wenn du hier &quot;<i>Nur passiv&quot; </i>auswählst
-und <i>&quot;Beide&quot;</i>, wenn du hier <i>&quot;Beide&quot;
-</i>auswählst.</p>
+mittleres Menü-&gt; <a href="https://www.juggluco.nl/Jugglucohelp/de/connectionoverview.html">Klon</a>).
+Hier gibst du den Port an, mit dem diese Instanz von Juggluco Kontakt
+aufnimmt, wenn sie aktiv Kontakt aufnimmt. Wenn diese Instanz von
+Juggluco nicht auf einem Port lauschen kann, wählen Sie &quot;<b>Nur
+aktiv</b>&quot;. Wenn die andere Seite keinen Port abhören kann,
+wähle &quot;<b>Nur passiv</b>&quot;, andernfalls lasse &quot;<b>Beide</b>&quot;
+markiert. Der Juggluco auf der anderen Seite sollte &quot;<i>Nur
+passiv&quot; </i>angeben, wenn du hier <i>&quot;Nur aktiv&quot;
+</i>auswählst und &quot;<i>Nur aktiv&quot;</i>, wenn du hier &quot;<i>Nur
+passiv&quot; </i>auswählst und <i>&quot;Beide&quot;</i>, wenn du
+hier <i>&quot;Beide&quot; </i>auswählst.</p>
 <p align="left" style="line-height: 100%; margin-bottom: 0in">Wenn
 diese Instanz von Juggluco aktiv Kontakt aufnimmt, sollten Sie die
 IP(s) angeben, mit denen sie Kontakt aufnehmen soll. Wenn dieser Host
@@ -366,10 +369,19 @@ Geräte an, da diese dann jeweils nur einen Teil der Daten erhalten.
 <p align="left" style="line-height: 100%; margin-bottom: 0in">In
 allen Fällen außer &quot;Nur aktiv&quot; können Sie &quot;<b>Erkennen</b>&quot;
 wählen; in diesem Fall speichert Juggluco die erste IP, die Juggluco
-kontaktiert, als IP der anderen Seite. Um zu überprüfen, ob das
-richtige Gerät Kontakt aufnimmt, gibt es zwei Möglichkeiten: Wählen
-Sie \'<b>IP</b><b> testen</b>\', um die IP zu testen. Wenn Sie \'<b>Etikett
-t</b><b>est</b><b>en</b><b>\' </b><span style="font-weight: normal">wählen</span>,
+kontaktiert, als IP der anderen Seite. 
+</p>
+<p align="left" style="line-height: 100%; margin-bottom: 0in"><b>H</b><b>ostname</b>:
+Geben Sie einen Hostnamen anstelle von IPs an. Dadurch ist die
+Verbindung von einem Nameserver abhängig, wodurch die Verbindung
+langsamer wird und die Verbindung zum Nameserver unterbrochen werden
+kann. Dies sollte nur aktiviert werden, wenn Sie keine statische IP
+konfigurieren können und der Hostname automatisch der dynamischen IP
+zugewiesen wird.</p>
+<p align="left" style="line-height: 100%; margin-bottom: 0in">Um zu
+überprüfen, ob das richtige Gerät Kontakt aufnimmt, gibt es zwei
+Möglichkeiten: Wählen Sie \'<b>IP</b> <b>testen</b>\', um die IP zu
+testen. Wenn Sie \'<b>Etikett testen\' </b><span style="font-weight: normal">wählen</span>,
 wird ein Kontakt nur hergestellt, wenn beide Seiten das gleiche
 Etikett angegeben haben.</p>
 <p align="left" style="line-height: 100%; margin-bottom: 0in">Wählen
@@ -460,7 +472,7 @@ Authentifizierungsdaten verwendet oder neue Daten mit alten Daten
 Angaben zu den Mengen sind völlig unabhängig.</p>
 <ol>
 	<ol>
-		<h2 class="western" align="left">Netzwerkprobleme</h2>
+		<li style="display: block"><h2 class="western" align="left">Netzwerkprobleme</h2>
 	</ol>
 </ol>
 <p align="left">Eine strenge komplementäre Spezifikation auf beiden
@@ -717,7 +729,7 @@ empfangen (receive)</p>
 <p align="left" style="line-height: 100%; margin-bottom: 0in"><span lang="de-DE">Weitere
 Informationen zu Klon-Verbindungen finden Sie in der Hilfe unter
 &quot;</span><span lang="de-DE"><i>Verbindung hinzufügen</i></span><span lang="de-DE">&quot;
-und unter </span><a class="western" href="https://www.juggluco.nl/index.html#mirror"><span lang="de-DE"><u>https://www.juggluco.nl/Juggluco/index.html#mirror</u></span></a></p>
+und unter </span><a class="western" href="https://www.juggluco.nl/Juggluco/index.html#mirror"><span lang="de-DE"><u>https://www.juggluco.nl/Juggluco/index.html#mirror</u></span></a></p>
 <h1>Desktop-Computer</h1>
 <p align="left" style="line-height: 100%; margin-bottom: 0in"><span style="text-decoration: none"><span lang="de-DE">Sie
 können die Android Juggluco-App mit Hilfe eines Android-Emulators
@@ -778,15 +790,54 @@ ausschalten.</font></font></p>
 </string>
 <string name="floatingconfig" >
 <![CDATA[
-
-  <h1>Schwebende Glukose</h1>
-  <p>Hier können Sie die Schriftgröße und die Vorder- und Hintergrundfarbe der schwebenden Glukose einstellen. Sie können den Hintergrund auch auf <strong>Transparent</strong> setzen, wodurch er unsichtbar wird.</p>
-  <p><strong>Berührbar</strong>: Wenn eingestellt, können Sie die schwebende Glukose mit dem Finger bewegen und durch langes Drücken (ohne Bewegung) entfernen. Wenn „Berührbar“ deaktiviert ist, geht die Berührungseingabe in das Fenster unter der schwebenden Glukose, sodass Sie die App unter der schwebenden Glukose verwenden können. Sie können die schwebende Glukose auch unberührbar machen, indem Sie <strong>zweimal</strong> darauf tippen.</p>
-  <p>Nachdem Sie die <strong>Schriftgröße</strong> eingegeben haben, müssen Sie die „<i>Enter“-,</i> „<i>Fertig“</i> - oder "✓"- Taste der Soft-Tastatur drücken.</p>
-  <p>Sie können <i>Schwebende Glukose</i> über das Menü links in der Mitte -&gt;Schweben ein- und ausschalten. Sie können „<i>Schwebende Glukose</i>“ auch deaktivieren, indem Sie <strong>lange</strong> auf den schwebenden Glukosewert <strong>drücken</strong>. Zum Beispiel, wenn Sie die Schriftgröße so groß eingestellt haben, dass Sie auf der Soft-Tastatur keine kleinere Schriftgröße mehr eingeben können.</p>
-  <p>Um über anderen Apps angezeigt zu werden, benötigt Juggluco eine spezielle Berechtigung. Auf WearOS und auch Android Automotive müssen Sie adb verwenden, um diese Berechtigung zu erteilen:</p>
-  <p><strong>adb shell pm grant tk.glucodata android.permission.SYSTEM_ALERT_WINDOW</strong></p>
-  <p>Bei einigen Uhren (z. B. TicWatch Pro) können Sie dies auch zulassen mit: Android/WearOS-Einstellungen-&gt;Apps & Benachrichtigungen-&gt; App-Info-&gt;Juggluco-&gt;Erweitert-&gt;Über anderen Apps einblenden.</p>
+<h1>Schwebende Glukose</h1>
+<p><span lang="de-DE">Hier können Sie die Schriftgröße und die
+Vorder- und Hintergrundfarbe der schwebenden Glukose einstellen. Sie
+können den Hintergrund auch auf </span><strong><span lang="de-DE">Transparent</span></strong><span lang="de-DE">
+setzen, wodurch er unsichtbar wird.</span></p>
+<p><strong><span lang="de-DE">Berührbar</span></strong><span lang="de-DE">:
+Wenn eingestellt, können Sie die schwebende Glukose mit dem Finger
+bewegen und durch langes Drücken (ohne Bewegung) entfernen. Wenn
+„Berührbar“ deaktiviert ist, geht die Berührungseingabe in das
+Fenster unter der schwebenden Glukose, sodass Sie die App unter der
+schwebenden Glukose verwenden können. Sie können die schwebende
+Glukose auch unberührbar machen, indem Sie </span><strong><span lang="de-DE">zweimal</span></strong><span lang="de-DE">
+darauf tippen.</span></p>
+<p style="background: transparent"><font face="Liberation Serif, serif"><b>Ü</b></font><b>ber</b>:
+ schwebende Glukose auch über Juggluco.</p>
+<p style="background: transparent"><b>Zeit</b>: Zeitstempel des
+Glukosewerts.</p>
+<p style="background: transparent"><b>Aktiv</b>: Einschalten.</p>
+<p><span lang="de-DE">Nachdem Sie die </span><strong><span lang="de-DE">Schriftgröße</span></strong><span lang="de-DE">
+eingegeben haben, müssen Sie die „</span><span lang="de-DE"><i>Enter“-,</i></span><span lang="de-DE">
+„</span><span lang="de-DE"><i>Fertig“</i></span><span lang="de-DE">
+- oder &quot;✓&quot;- Taste der Soft-Tastatur drücken.</span></p>
+<p><span lang="de-DE">Sie können </span><span lang="de-DE"><i>Schwebende
+Glukose</i></span><span lang="de-DE"> über das Menü links in der
+Mitte -&gt;Schweben ein- und ausschalten. </span>
+</p>
+<p><span lang="de-DE">Sie können zu Juggluco wechseln, indem Sie auf
+die </span><span lang="de-DE"><b>Pfeilseite </b></span><span lang="de-DE">der
+schwebenden Glukose tippen. Durch zweimaliges Antippen der
+Glukosewertseite wird die schwebende Glukose </span><strong><span lang="de-DE"><span style="font-weight: normal">Unbe</span></span></strong><strong><span lang="de-DE"><span style="font-weight: normal">rührbar</span></span></strong><span lang="de-DE">.
+</span><span lang="de-DE"><span style="font-weight: normal">Wenn Sie
+</span></span><span lang="de-DE"><b>lange</b></span><span lang="de-DE"><span style="font-weight: normal">
+auf </span></span><span lang="de-DE">den Glukosewert drücken, wird
+nur ein kleiner Glukosewert angezeigt, so dass Sie mit dem, was sich
+darunter befindet, interagieren können. Durch Antippen der kleinen
+Anzeige wird dieser wieder vergrößert. Durch </span><span lang="de-DE"><b>Bewegen</b></span><span lang="de-DE">
+beim Berühren der Glukosewertseite wird </span><span lang="de-DE">die</span><span lang="de-DE">
+schwebende Glukose </span><span lang="de-DE"><span style="font-weight: normal">verschoben&nbsp;</span></span><span lang="de-DE">.</span></p>
+<p><span lang="de-DE">Um über anderen Apps angezeigt zu werden,
+benötigt Juggluco eine spezielle Berechtigung. Auf WearOS und auch
+Android Automotive müssen Sie adb verwenden, um diese Berechtigung
+zu erteilen:</span></p>
+<p><strong><span lang="de-DE">adb shell pm grant tk.glucodata
+android.permission.SYSTEM_ALERT_WINDOW</span></strong></p>
+<p>Bei einigen Uhren (z. B. TicWatch Pro) können Sie dies auch
+zulassen mit: Android/WearOS-Einstellungen-&gt;Apps &amp;
+Benachrichtigungen-&gt; App-Info-&gt;Juggluco-&gt;Erweitert-&gt;Über
+anderen Apps einblenden.</p>
 ]]>
 </string>
 <string name="garminconfig" >
@@ -1279,8 +1330,9 @@ an Libreview gesendet werden sollen.</p>
 <h1>Libreview</h1>
 <p>Juggluco kann Glukosedaten und -mengen an Libreview senden. Bei
 Verwendung von Libre 0- oder 3-Sensoren, US/CA/AU Libre 2-Sensoren
-oder anderen Libre 2-Sensoren mit eingestelltem <i>Bluetooth History,</i> sendet Juggluco die Historywerte an Libreview. <span style="font-style: normal">Wenn
-Libre 2-Sensoren ohne</span><i> „Bluetoothy History</i>“
+oder anderen Libre 2-Sensoren mit eingestelltem <i>Bluetooth History,</i>
+sendet Juggluco die Historywerte an Libreview. <span style="font-variant: normal"><span style="font-style: normal">Wenn
+Libre 2-Sensoren ohne</span></span> „<i>Bluetoothy History</i>“
 verwendet werden , verwendet Juggluco die über Bluetooth empfangenen
 Stream-Daten, um diese 15-Minuten-Punkte zu erstellen, indem die
 Stream-Werte um jeden Punkt herum gemittelt werden.</p>
@@ -1301,8 +1353,14 @@ Juggluco verlassen und dies in den letzten 20 Minuten nicht geschehen
 ist. Sie können es auch manuell an Libreview senden, indem Sie auf
 „<strong><i>Jetzt senden</i></strong>“ klicken .</p>
 <p>Neben Glukosewerten können auch Mengen an Libreview gesendet
-werden. Dazu müssen Sie auf „<strong><i>Mengen </i></strong><strong><i>senden</i></strong>“
+werden. Dazu müssen Sie auf „<strong><i>Mengen senden</i></strong>“
 tippen und angeben, was die einzelnen Etiketten bedeuten.</p>
+<p style="line-height: 100%; margin-bottom: 0in"><b>RU</b>: Sie
+müssen dies festlegen, wenn Sie <a href="https://libreview.ru/">https://libreview.<b>ru</b></a>
+anstelle von <a href="https://libreview.com/">https://libreview.com</a>
+verwenden. Dies gilt nur für Libre 2-Sensoren. Libre 3-Sensoren
+können nur mit libreview.com verwendet werden, da keine russische
+Libre 3-App existiert.</p>
 <p><strong>Sofort</strong>: Senden Sie Glukosewerte sofort an
 Libreview, wenn sie von Libre 2- oder 3-Sensoren eintreffen. Dies ist
 nur in Kombination mit LibreLinkUp sinnvoll. Um es nutzen zu können,
@@ -1319,10 +1377,9 @@ sendet Juggluco an Libreview, ob ein Wert angezeigt wird oder nicht.
 Wenn diese Option deaktiviert ist, meldet Juggluco immer, dass es
 nicht angezeigt wird. Diese Option sendet diese Informationen nur
 dann zuverlässig an Libreview, wenn auch „<i>Sofort“</i>
-aktiviert ist. 
-</p>
-<p><strong>Daten erneut senden</strong>: Neu beginnen; Daten der
-letzten 90 Tage erneut an Libreview senden. Sie müssen diese Taste
+aktiviert ist.</p>
+<p><b>Anfang</b><b> ändern</b>: Daten ab einem bestimmten Datum und
+einer bestimmten Uhrzeit erneut senden. Sie müssen diese Taste
 drücken, wenn Sie zu einem neuen Libreview-Konto wechseln.</p>
 <p>Das Ergebnis des letzten Sendeversuchs an Libreview wird unter der
 Schaltfläche „Konto-ID abrufen“ angezeigt.</p>
@@ -1337,7 +1394,7 @@ etwas höhere <i>Zielzeit</i> angibt als der Statistikbildschirm von
 Juggluco. Da die auf den Sensoren erstellten History-Werte weniger
 extrem sind als der Durchschnitt der Stream-Werte um einen
 History-wert herum, ist dieser Unterschied größer, wenn Libreview
-auf den History-<span style="font-style: normal">W</span><span style="font-style: normal">erten</span>
+auf den History-<span style="font-variant: normal"><span style="font-style: normal">Werten</span></span>
 basiert , wie wenn „Bluetooth History“ in Juggluco aktiviert ist
 oder Librelink verwendet wird .</p>
 <p>Juggluco kann mit mehreren Sensoren gleichzeitig verbunden werden,
@@ -1352,11 +1409,11 @@ von Librelink zu imitieren. Das heißt, wenn Sie mehrere Sensoren
 gleichzeitig ausführen und ein später hinzugefügter Sensor früher
 endet als ein früher hinzugefügter Sensor, sendet dieser frühere
 Sensor keine Daten mehr an Libreview.</p>
-<p><strong>Konto-ID </strong><strong>erhalten</strong>: Wenn Sie nur
-die LibreView-Konto-ID erhalten, aber keine Daten an Libreview senden
+<p><strong>Konto-ID erhalten</strong>: Wenn Sie nur die
+LibreView-Konto-ID erhalten, aber keine Daten an Libreview senden
 möchten, können Sie Ihre E-Mail-Adresse und Ihr Passwort eingeben
-und auf „<i>Konto-ID </i><i>erhalten</i>“ klicken. In derselben
-Zeile vor dieser Schaltfläche wird die Konto-ID angezeigt (dies kann
+und auf „<i>Konto-ID erhalten</i>“ klicken. In derselben Zeile
+vor dieser Schaltfläche wird die Konto-ID angezeigt (dies kann
 einige Zeit dauern und der Bildschirm wird nicht automatisch
 aktualisiert). Das Abrufen der Konto-ID vom LibreView-Server
 ermöglicht die Verwendung eines FreeStyle Libre 3-Sensors, der
@@ -1368,17 +1425,19 @@ diesem Konto aktiviert werden.</p>
 </string>
 <string name="locationpermission" >
 <![CDATA[
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; line-height: 0.17in; orphans: 2; widows: 2; margin-bottom: 0in">
-<font><font face="Times New Roman"><font size="4" style="font-size: 14pt">Zuvor
+<h1>Standortberechtigung</h1>
+<p style="margin-bottom: 0in"><font face="Times New Roman">Geräte
+mit Android 6 bis 11 benötigen eine Standortberechtigung, um
+<b>Sibionics-Sensoren</b> zu finden.</font></p>
+<p style="margin-bottom: 0in"><font face="Times New Roman">Zuvor
 benötigte Juggluco eine Standortberechtigung, um die
 Bluetooth-Geräteadresse von FreeStyle Libre 2-Sensoren zu
 finden.&nbsp;Jetzt verwendet Juggluco auf den meisten Geräten einen
 anderen Weg, um die Geräteadresse zu erhalten, und es ist keine
-Standorterlaubnis erforderlich.</font></font></font></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; line-height: 0.17in; orphans: 2; widows: 2; margin-bottom: 0in">
-<font><font face="Times New Roman"><font size="4" style="font-size: 14pt">Juggluco
+Standorterlaubnis erforderlich.</font></p>
+<p style="margin-bottom: 0in"><font face="Times New Roman">Juggluco
 verwendet immer noch die alte Methode auf Android 6,7 und 7.1 und es
-wird immer noch eine Standorterlaubnis für sie benötigt.</font></font></font></p>
+wird immer noch eine Standorterlaubnis für sie benötigt.</font></p>
 <p><br/>
 <br/>
 <br/>
@@ -1419,13 +1478,18 @@ Inhaltsstoffdefinition einfügen.</font></font></p>
 </string>
 <string name="nearbypermission" >
 <![CDATA[
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; line-height: 100%; orphans: 2; widows: 2; margin-bottom: 0in">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Android
-12 hat einige neue Bluetooth-Berechtigungen, die eine ausdrückliche
-Zustimmung zur Verwendung von Bluetooth erfordern. Wenn Sie diese
-GERÄTE IN DER NÄHE-Berechtigung nicht erteilen, kann Juggluco keine
-Glukosewerte über Bluetooth von Freestyle Libre 2-Sensoren
-empfangen.</font></font></p>
+<h1>Berechtigung für Geräte in der
+Nähe</h1>
+<p style="line-height: 100%; margin-bottom: 0in">Juggluco benötigt
+die Erlaubnis von GERÄTEN IN DER NÄHE, um Glukosewerte über
+Bluetooth von den Sensoren Freestyle Libre 2 und 3 zu empfangen. Wenn
+Juggluco diese Glukosewerte von Juggluco empfängt, das auf einem
+anderen Telefon oder einer anderen Uhr läuft, benötigt Juggluco
+diese Erlaubnis nicht.</p>
+<p style="line-height: 100%; margin-bottom: 0in">Zu Uhren stellt
+Juggluco eine Verbindung über die Begleit-App dieser Uhr her, sodass
+Juggluco selbst diese Berechtigung nicht benötigt, um eine
+Verbindung zu Uhren herzustellen.</p>
 ]]>
 </string>
 <string name="newamount" >
@@ -1492,18 +1556,22 @@ Etiketten selbst können im linken Menü -&gt; Einstellungen -&gt; &quot;Zahlene
 </string>
 <string name="notificationpermission" >
 <![CDATA[
-<p>Android 13 erfordert, dass Sie
-Berechtigungen für diese Benachrichtigungen erteilen, bevor Sie
-überhaupt wissen, welche Art von Benachrichtigungen gesendet werden.
-Juggluco verfügt über Benachrichtigungen, die Glukosewerte
-enthalten, und benötigt Benachrichtigungen in Verbindung mit einem
-Foreground Service, der erforderlich ist, um im Hintergrund aktiv zu
-bleiben. Für die ordnungsgemäße Funktion von Juggluco sollten Sie
-Juggluco besser diese Erlaubnis erteilen.</p>
-<p>Sie können Benachrichtigungen ganz einfach in den
-Android-Einstellungen „App-Info“ -&gt;„Benachrichtigungen
-verwalten“ f<font face="Liberation Serif, serif">ü</font>r
-Juggluco ein- und ausschalten.</p>
+<h1>Benachrichtigungen</h1>
+<p>Sofern Juggluco nicht mit Freestyle Libre 0-Sensoren verwendet
+wird, muss Juggluco im Hintergrund aktiv bleiben, um jede Minute
+einen Glukosewert, entweder direkt vom Sensor über Bluetooth oder
+über eine Netzwerkverbindung, zu empfangen. Um zu verhindern, dass
+Apps von Android beendet werden, erfordert Android, dass Apps eine
+Benachrichtigung anzeigen, damit Benutzer wissen, dass die Anwendung
+im Hintergrund läuft. Der Text „<i>Zur Verbindung mit dem </i><i>Sensor</i>“
+oder „<i>Um </i><i>Daten aus</i><i>zu</i><i>tauschen</i>“
+beschreibt, warum Juggluco im Hintergrund aktiv bleiben muss.</p>
+<p>Juggluco nutzt die Benachrichtigung auch, um den aktuellen
+Glukosewert und einen Richtungsänderungspfeil anzuzeigen.</p>
+<p><br/>
+<br/>
+
+</p>
 ]]>
 </string>
 <string name="nutrients" >
@@ -1627,8 +1695,8 @@ Klingeltonauswahl-App ab, sodass Sie eine andere Klingelton-App
 installieren müssen, zum Beispiel:
 <a href="https://play.google.com/store/apps/details?id=com.centralparkapps.ringo.ringtones">https://play.google.com/store/apps/details?id=com.centralparkapps.ringo.ringtones</a>,
 <a href="https://apkcombo.com/ringtone-picker/de.kumpewo.ringtones">https://apkcombo.com/ringtone-picker/de.kumpewo.ringtones</a>
-oder
-<a href="https://m.apkpure.com/tone-picker-mp3-ringtones/com.hlidskialf.android.tonepicker">https://m.apkpure.com/tone-picker-mp3-ringtones/com.hlidskialf.android.tonepicker</a></p>
+oder <a href="https://www.apkmonk.com/app/com.hlidskialf.android.tonepicker">https://www.apkmonk.com/app/com.hlidskialf.android.tonepicker</a>
+</p>
 <p><strong>Vibrieren</strong>: Vibrieren</p>
 <p><strong>Stören</strong>: Erzeugt auch Ton, wenn „<i>Nicht
 stören</i>“ eingeschaltet ist. Wenn Juggluco hierfür nicht die
@@ -1726,21 +1794,16 @@ Mindestmenge dieser Zutat.</font></font></p>
 </string>
 <string name="sensorhelp" >
 <![CDATA[
-<p style="margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="liberation serif"><font size="3" style="font-size: 12pt"><b>Sensor</b></font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt">Der
+<p style="border: none; padding: 0in"><font face="liberation serif"><b>Sensor</b></font></p>
+<p style="border: none; padding: 0in"><font face="times new roman">Der
 Spinner enthält den Namen des Sensors.&nbsp;Wenn Juggluco
 gleichzeitig mehr als einen Sensor verwendet, können Sie auswählen,
-für welchen Sensor Informationen angezeigt werden sollen.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>Doze-Modus</b></i></font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>
-</b></i></font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt">führt
-Sie zu einem Bildschirm mit Informationen zum Deaktivieren der
-Batterieoptimierung für Juggluco, die die Funktion von Juggluco
-verhindern können.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>Berechtigung</b></i></font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt">:
+für welchen Sensor Informationen angezeigt werden sollen.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><i><b>Doze-Modus</b></i></font>
+<font face="times new roman">führt Sie zu einem Bildschirm mit
+Informationen zum Deaktivieren der Batterieoptimierung für Juggluco,
+die die Funktion von Juggluco verhindern können.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><i><b>Berechtigung</b></i></font><font face="times new roman">:
 Frühere Versionen von Juggluco benötigten eine
 Standortberechtigung, um die Geräteadresse des Sensors zu
 finden.&nbsp;Bei den von mir verwendeten Sensoren ist dies nicht mehr
@@ -1749,49 +1812,49 @@ ist;&nbsp;In diesem Fall können Sie es einschalten.&nbsp;Nach dem
 ersten Kontakt speichert Juggluco die Geräteadresse und die
 Standorterlaubnis ist immer nutzlos.&nbsp;Die Geräteadresse wird,
 falls bekannt, nach der Sensorkennung angezeigt.&nbsp;Rot bedeutet
-einen US-ähnlichen Sensor.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt">Android
+einen US-ähnlichen Sensor.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman">Android
 12 hat eine neue Berechtigung für Geräte in der Nähe, die anstelle
 der Standortberechtigung für die Suche nach einer
 Bluetooth-Geräteadresse verwendet werden kann, aber auch für die
-spätere Kontaktaufnahme mit Bluetooth-Geräten benötigt wird.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>Bluetooth history</b></i><i><b>: </b></i>Bei Libre 0 und 2 handelt es sich beim
-History um Werte der Vergangenheit im 15-Minuten-Intervall. Bisher
-wurden sie nur durch Scannen empfangen. Wenn Sie diese Option
-aktivieren, werden die History-Werte auch über Bluetooth empfangen.
-Auch andere Dinge werden anders funktionieren. An Libreview werden
-die History-Werte anstelle der Durchschnittswerte der Streamwerte
-gesendet. Der Nachteil ist, dass es langsamer ist. Dies kann bei
-WearOS-Uhren ein Problem sein.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt">Diese
+spätere Kontaktaufnahme mit Bluetooth-Geräten benötigt wird.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><i><b>Bluetooth
+history: </b></i>Bei Libre 0 und 2 handelt es sich beim History um
+Werte der Vergangenheit im 15-Minuten-Intervall. Bisher wurden sie
+nur durch Scannen empfangen. Wenn Sie diese Option aktivieren, werden
+die History-Werte auch über Bluetooth empfangen. Auch andere Dinge
+werden anders funktionieren. An Libreview werden die History-Werte
+anstelle der Durchschnittswerte der Streamwerte gesendet. Der
+Nachteil ist, dass es langsamer ist. Dies kann bei WearOS-Uhren ein
+Problem sein.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman">Diese
 Option ist für Libre 3-Sensoren und US Libre 2-Sensoren immer
-aktiviert.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>Beenden</b></i></font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt">:
+aktiviert.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><b>Vergessen</b>:
+Lassen Sie Juggluco die Geräteadresse vergessen und nach der
+Geräteadresse suchen. Bei einigen Sensoren ist dies erforderlich, um
+eine Verbindung herzustellen, und wird dann von Juggluco automatisch
+durchgeführt. Mit dieser Schaltfläche können Sie manuell
+festlegen, dass Juggluco dies tun soll, da es möglicherweise auch
+andere Gelegenheiten gibt, bei denen dies ebenfalls erforderlich ist.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><i><b>Beenden</b></i></font><font face="times new roman">:
 Verbindung zu diesem Sensor über Bluetooth beenden. Wenn Sie später
 wieder Stream-Glukosewerte von diesem Sensor erhalten möchten,
-müssen Sie ihn nur erneut scannen.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>Turbo</b></i></font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt">:
+müssen Sie ihn nur erneut scannen.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><i><b>Turbo</b></i></font><font face="times new roman">:
 Erhöht den Aufwand für den Kontakt mit dem Sensor in der Hoffnung,
 dass dies zu weniger Verbindungsfehlern führt, aber mehr
 Batterieleistung verbraucht. Scheint auf Watch4 mit Freestyle Libre
 2-Sensoren benötigt zu werden, aber nicht mit Freestyle Libre
 3-Sensoren und auf keinem der Smartphones, auf denen ich es
-ausprobiert habe.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>Android</b></i></font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt">:
+ausprobiert habe.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><i><b>Android</b></i></font><font face="times new roman">:
 Lassen Sie Android anstelle von Juggluco die Verbindung mit dem
-Sensor herstellen.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><i><b>Info</b></i></font></font></font><font>&nbsp;</font><font><font face="times new roman"><font size="4" style="font-size: 14pt">:
+Sensor herstellen.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><i><b>Info</b></i></font>&nbsp;<font face="times new roman">:
 Gibt Start- und Endzeiten sowie die letzten Scan- und Stream-Zeiten
-des Sensors an.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><span lang="de-DE">Um
+des Sensors an.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman">Um
 sich über Low Energy Bluetooth mit einem Freestyle Libre 2-Sensor zu
 verbinden, sollte Bluetooth eingeschaltet sein.&nbsp;Bevor der Sensor
 von dieser App erfolgreich gescannt wird, passiert nichts.&nbsp;Der
@@ -1800,49 +1863,42 @@ Applets auf Smartphones verbunden werden.&nbsp;Die Alarme der Abbotts
 Librelink-App sollten ausgeschaltet oder die App angehalten
 werden.&nbsp;Einige Librelink-Apps scheinen den Sensor zu
 kontaktieren, während Alarme ausgeschaltet sind, und können
-Verbindungsprobleme verursachen, also verwenden Sie „&nbsp;</span></font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><span lang="de-DE"><i>Stopp
-erzwingen</i></span></font></font></font><font><span lang="de-DE">&nbsp;“</span></font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><span lang="de-DE">,
-um sicherzugehen. Wenn Sie den Sensor mit Freestyle Reader gestartet
+Verbindungsprobleme verursachen, also verwenden Sie „&nbsp;</font><font face="times new roman"><i>Stopp
+erzwingen</i></font>&nbsp;“<font face="times new roman">, um
+sicherzugehen. Wenn Sie den Sensor mit Freestyle Reader gestartet
 haben und ihn nicht ausschalten können, können Sie verhindern, dass
 er mit dem Sensor in Kontakt kommt, indem Sie den Reader in einen
-</span></font></font></font><a href="https://www.offgridweb.com/preparation/faraday-bags-testing-commercial-and-diy-wireless-signal-blockers/amp/"><font><font face="arial"><font size="4" style="font-size: 14pt"><span lang="de-DE"><u>Faradayschen
-Käfig</u></span></font></font></font></a><font><span lang="de-DE">
-</span></font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><span lang="de-DE">stecken.</span></font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt"><b>Sensor
-über Bluetooth/Bluetooth</b></font></font></font><font>
-</font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><b>nutzen</b></font></font></font><font>
-</font><font><font face="times new roman"><font size="4" style="font-size: 14pt">sollte
-eingeschaltet sein.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt">Wenn
+</font><a href="https://www.offgridweb.com/preparation/faraday-bags-testing-commercial-and-diy-wireless-signal-blockers/amp/"><font face="arial"><u>Faradayschen
+Käfig</u></font></a> <font face="times new roman">stecken.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman"><b>Sensor
+über Bluetooth/Bluetooth</b></font> <font face="times new roman"><b>nutzen</b></font>
+<font face="times new roman">sollte eingeschaltet sein.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman">Wenn
 die oben genannten Bedingungen erfüllt sind, kann es noch lange
 dauern, bis die App Glukosewerte vom Sensor erhält.&nbsp;Oft dauert
 es eine Minute, aber manchmal dauert es viel
-länger.&nbsp;Die&nbsp;</font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><i>Verbindungsphase</i></font></font></font><font>&nbsp;</font><font><font face="times new roman"><font size="4" style="font-size: 14pt">verursacht
-die meisten Probleme.</font></font></font><font> </font><font><font face="times new roman"><font size="4" style="font-size: 14pt">Am
+länger.&nbsp;Die&nbsp;</font><font face="times new roman"><i>Verbindungsphase</i></font>&nbsp;<font face="times new roman">verursacht
+die meisten Probleme.</font> <font face="times new roman">Am
 häufigsten sind Fehler mit status=133, dem Statusargument von
 onConnectionStateChange(BluetoothGatt bluetoothGatt, int status, int
-newState).</font></font></font><font> </font><font><font face="times new roman"><font size="4" style="font-size: 14pt">Wenn
-Sie die Batterie aus einem Sensor entfernen, erhalten Sie auch diesen
-Fehler, also scheint es so etwas wie&nbsp;</font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><i>Bluetooth-Gerät
-nicht gefunden</i></font></font></font><font>&nbsp;</font><font><font face="times new roman"><font size="4" style="font-size: 14pt">zu
-sein .&nbsp;Manchmal scheint es zu helfen, Bluetooth aus- und
+newState).</font> <font face="times new roman">Wenn Sie die Batterie
+aus einem Sensor entfernen, erhalten Sie auch diesen Fehler, also
+scheint es so etwas wie&nbsp;</font><font face="times new roman"><i>Bluetooth-Gerät
+nicht gefunden</i></font>&nbsp;<font face="times new roman">zu sein
+.&nbsp;Manchmal scheint es zu helfen, Bluetooth aus- und
 einzuschalten oder das Telefon neu zu starten oder die
 Bluetooth-Verbindung anderer Geräte auszuschalten.&nbsp;Andere
-Probleme werden manchmal durch Scannen des Sensors gelöst.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="times new roman"><font size="4" style="font-size: 14pt">Das
-Scannen des Sensors mit Juggluco (mit aktiviertem&nbsp;</font></font></font><font><font face="times new roman"><font size="4" style="font-size: 14pt"><i>Sensor
-über Bluetooth</i></font></font></font><font>&nbsp;</font><font><font face="times new roman"><font size="4" style="font-size: 14pt">)
-auf einem anderen Telefon stiehlt die Verbindung von diesem Telefon
-und es kann einige Zeit dauern, bis das Scannen zwischendurch
-wiederhergestellt ist.</font></font></font></p>
-<p style="line-height: 116%; margin-bottom: 0in; border: none; padding: 0in">
-<font><font face="Arial"><font size="2" style="font-size: 11pt"><br/>
-&nbsp;</font></font></font><font>&nbsp;</font><font><font face="Arial"><font size="2" style="font-size: 11pt"><br/>
-&nbsp;</font></font></font><font>&nbsp;</font><font><font face="Arial"><font size="2" style="font-size: 11pt"><br/>
-&nbsp;</font></font></font><font>&nbsp;</font></p>
+Probleme werden manchmal durch Scannen des Sensors gelöst.</font></p>
+<p style="border: none; padding: 0in"><font face="times new roman">Das
+Scannen des Sensors mit Juggluco (mit aktiviertem&nbsp;</font><font face="times new roman"><i>Sensor
+über Bluetooth</i></font>&nbsp;<font face="times new roman">) auf
+einem anderen Telefon stiehlt die Verbindung von diesem Telefon und
+es kann einige Zeit dauern, bis das Scannen zwischendurch
+wiederhergestellt ist.</font></p>
+<p style="border: none; padding: 0in"><font face="Arial"><br/>
+&nbsp;</font>&nbsp;<font face="Arial"><br/>
+&nbsp;</font>&nbsp;<font face="Arial"><br/>
+&nbsp;</font>&nbsp;</p>
 ]]>
 </string>
 <string name="setlibrenumtype" >
@@ -1884,44 +1940,53 @@ diesem Etikett „<i>50“</i> eingegeben haben<i>.&nbsp;</i>„&nbsp;<i>Bike
 <![CDATA[
 <h1 class="western" align="left">Einstellungen</h1>
 <h2 class="western" align="left">Einheit</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Wählen
-Sie, ob die Glukosewerte in mmol/L oder dm/dL angegeben werden
-sollen.</p>
+<p align="left" style="margin-bottom: 0in">Wählen Sie, ob die
+Glukosewerte in mmol/L oder dm/dL angegeben werden sollen.</p>
 <h2 class="western" align="left">Kurvenbereich: niedrig-hoch.</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Geben
-Sie einen niedrigen und einen hohen Wert an, so dass der untere Teil
-des Bildschirms dem niedrigsten und der obere Teil dem höchsten Wert
-entspricht. Diese Werte werden nur verwendet, wenn alle auf dem
-Bildschirm angezeigten Glukosewerte innerhalb dieser Grenzen liegen.
-Andernfalls werden die Grenzen erweitert, so dass alle Werte sichtbar
-sind. Wenn Sie 3 mmol/L (54 mg/dL) und 9 mmol/L (162 mg/dL) messen
-und alle Werte auf der sichtbaren Anzeige zwischen 5 mmol/L und 6
-mmol/L liegen, zeigt das Diagramm eine Glukoseachse von 3 bis 9 an. 
+<p align="left" style="margin-bottom: 0in">Geben Sie einen niedrigen
+und einen hohen Wert an, so dass der untere Teil des Bildschirms dem
+niedrigsten und der obere Teil dem höchsten Wert entspricht. Diese
+Werte werden nur verwendet, wenn alle auf dem Bildschirm angezeigten
+Glukosewerte innerhalb dieser Grenzen liegen. Andernfalls werden die
+Grenzen erweitert, so dass alle Werte sichtbar sind. Wenn Sie 3
+mmol/L (54 mg/dL) und 9 mmol/L (162 mg/dL) messen und alle Werte auf
+der sichtbaren Anzeige zwischen 5 mmol/L und 6 mmol/L liegen, zeigt
+das Diagramm eine Glukoseachse von 3 bis 9 an. 
 </p>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Wenn
-die <b>manuelle Blutzuckerskala </b>aktiviert ist, können Sie dies
-ändern: Wenn Sie Ihren Finger über den oberen Teil des Bildschirms
-bewegen, wird die obere Hälfte des Diagramms nach oben und unten
-verschoben; wenn Sie über den unteren Teil des Bildschirms fahren,
-wird die untere Hälfte des Diagramms nach oben und unten verschoben.</p>
+<p align="left" style="margin-bottom: 0in">Wenn die <b>manuelle
+Blutzuckerskala </b>aktiviert ist, können Sie dies ändern: Wenn Sie
+Ihren Finger über den oberen Teil des Bildschirms bewegen, wird die
+obere Hälfte des Diagramms nach oben und unten verschoben; wenn Sie
+über den unteren Teil des Bildschirms fahren, wird die untere Hälfte
+des Diagramms nach oben und unten verschoben.</p>
 <h2 class="western" align="left">Zielbereich: niedrig-hoch</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Die
-obere Seite der Anzeige ist anders gefärbt, damit Sie hohe Werte
-leichter erkennen können. Das Gleiche gilt für niedrige Werte. Eine
-rote Linie zeigt die zu niedrige Seite der Anzeige an.</p>
+<p align="left" style="margin-bottom: 0in">Die obere Seite der
+Anzeige ist anders gefärbt, damit Sie hohe Werte leichter erkennen
+können. Das Gleiche gilt für niedrige Werte. Eine rote Linie zeigt
+die zu niedrige Seite der Anzeige an.</p>
 <h2 class="western" align="left">Zahlen der Glukose-Achse LINKS</h2>
 <p align="left">Platzieren Sie die Zahlen des Blutzuckerspiegels in
 der Grafik auf der linken Seite des Bildschirms. Nützlich, wenn Sie
 Ihren aktuellen Blutzuckerwert in der Mitte des Bildschirms anzeigen
 möchten, z. B. bei Wear OS.</p>
+<h2 class="western" align="left">Schwelle</h2>
+<p style="background: transparent">Legen Sie einen Schwellenwert für
+die Änderungsrate der Glukosewerte fest. Nur wenn die Änderungsrate
+um den angegebenen Betrag von 0 abweicht, unterscheidet sich der
+Änderungsratenpfeil von der Horizontalen. Sie können beliebige
+Werte zwischen 0 und 0.8 verwenden. Der Schwellenwert wird verwendet,
+um zu verhindern, dass kleinen absoluten Änderungsratenwerten zu
+viel Bedeutung beigemessen wird. Es ist durchaus möglich, dass die
+Änderungsrate einen langsam steigenden Glukosewert anzeigt, in
+Wirklichkeit aber sinkt. Der Schwellenwert dient dazu, eine
+vorsichtigere Aussage zu treffen.</p>
 <h2 class="western" align="left">Bildschirm invertieren</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Drehen
-Sie das Display auf den Kopf. Es ist standardmäßig eingeschaltet,
-weil ich sonst hin und wieder beim Scannen eines Sensors
-versehentlich OK berührt habe.</p>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Manche
-Leute fragen nach dem Hochformat, aber ich habe das ausgeschaltet,
-weil es für die Anzeige der Glukosekurve völlig ungeeignet ist.</p>
+<p align="left" style="margin-bottom: 0in">Drehen Sie das Display auf
+den Kopf. Es ist standardmäßig eingeschaltet, weil ich sonst hin
+und wieder beim Scannen eines Sensors versehentlich OK berührt habe.</p>
+<p align="left" style="margin-bottom: 0in">Manche Leute fragen nach
+dem Hochformat, aber ich habe das ausgeschaltet, weil es für die
+Anzeige der Glukosekurve völlig ungeeignet ist.</p>
 <h2 class="western" align="left">Nfc-Ton</h2>
 <p align="left">Erzeugen Sie beim Scannen zusätzlich zur Vibration
 einen Ton.</p>
@@ -1965,6 +2030,12 @@ gesamte App deaktivieren:</p>
 <p align="left">Bevor Sie den Kundendienst von Abbott anrufen,
 aktivieren Sie ihn erneut mit:</p>
 <p align="left">pm enable com.freestylelibre.app.de</p>
+<h2 class="western">Health Connect</h2>
+<p>Senden Sie minutengenaue Glukosewerte an <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata">Health
+Connect</a> . Sie können anderen Apps Zugriff auf diese Glukosewerte
+gewähren, beispielsweise <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.fitness">Google
+Fit</a> . Andere Apps können wiederum auf Daten von Google Fit
+zugreifen.</p>
 <h2 class="western" align="left">Libreview</h2>
 <p align="left">Verbinden Sie sich mit Libreview, um die Glukosewerte
 and Mengen des Freestyle Libre 2 und 3 an Libreview zu senden und die
@@ -1982,10 +2053,9 @@ alle 5 Minuten senden (eine mit xDrip verbundene Armbanduhr zeigte
 regelmäßig mehr als 9 Minuten alte Werte an). Darüber hinaus zeigt
 xDrip seine eigene Interpretation der empfangenen Glukosewerte an.
 Auch Klongeräte können an xDrip senden.</p>
-<p align="left"><span lang="de-DE">Siehe
-</span><a href="https://github.com/jakobheyman/xdripJH"><span lang="de-DE"><u>https://github.com/jakobheyman/xdripJH</u></span></a>
-<span lang="de-DE">für einen Versuch, den Glukosewert von xDrip jede
-Minute zu aktualisieren.</span></p>
+<p align="left">Siehe <a href="https://github.com/jakobheyman/xdripJH"><u>https://github.com/jakobheyman/xdripJH</u></a>
+für einen Versuch, den Glukosewert von xDrip jede Minute zu
+aktualisieren.</p>
 <p align="left">Freestyle Libre 3-Sensoren senden fehlende Werte nach
 einer Unterbrechungszeit. Diese Werte werden mit diesem Broadcast
 nicht gesendet. Sie erhalten sie, wenn Sie den Webserver in Juggluco
@@ -2000,82 +2070,119 @@ eine App kann den vom xDrip-Webserver verwendeten Netzwerkport
 abhören, daher müssen Sie den „<i>xDrip-Webservice“</i> in
 xDrip selbst deaktivieren, wenn Sie den in Juggluco verwenden
 möchten.</p>
+<h2 class="western" align="left">EverSense</h2>
+<p style="background: transparent">Noch eine Glukosebroadcast. Damit
+kann jede Minute ein Glukosewert an xDrip gesendet werden. xDrip
+ignoriert fast alle davon, da es auf einem Wert in 5 Minuten besteht.
+Sie können diese Einschränkung aufheben, indem Sie den Quellcode
+von xDrip bearbeiten. Ändern Sie&nbsp;<i>4 * 60 * 1000</i>&nbsp;in&nbsp;<i>55
+*
+1000</i>&nbsp;in&nbsp;<a href="https://github.com/NightscoutFoundation/xDrip/blob/645e8b4cb8fa3ad7b280f598d6f2f6bdb84ce392/app/src/main/java/com/eveningoutpost/dexdrip/models/BgReading.java#L969">app/src/main/java/com/eveningoutpost/dexdrip/models/BgReading.java</a>&nbsp;,
+sodass Folgendes entsteht:</p>
+<p>public static BgReading readingNearTimeStamp(long startTime)
+{<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;long
+margin = (55 * 1000);<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return
+readingNearTimeStamp(startTime, margin);<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}</p>
+<p style="background: transparent">Der Vorteil gegenüber der Patched
+Libre broadcast besteht darin, dass xDrip die Glukosewerte nicht auf
+eine nicht spezifizierte Weise umwandelt.</p>
 <h2 class="western" align="left">xDrip Broadcast</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Senden
-Sie die gleiche Broadcast, die in xDrip mit
+<p align="left" style="margin-bottom: 0in">Senden Sie die gleiche
+Broadcast, die in xDrip mit
 „Einstellungen-&gt;Inter-App-Einstellungen-&gt;Lokaler Broadcast“
 aktiviert wurde. Apps wie AndroidAPS hören es sich an. Im Gegensatz
 zur ursprünglichen xDrip-Broadcast, die alle 5 Minuten ausgestrahlt
 wurde, sendet Juggluco diese Broadcast jede Minute.</p>
 <h2 class="western" align="left">Glucodata Broadcast</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Eine
-neue Broadcast, die dieselbe Funktion wie die xDrip Broadcast hat.
-<span lang="de-DE">Eine einfache Beispielanwendung, die empfangene
-Glukosewerte in logcat schreibt, finden Sie hier:</span> <span lang="de-DE"><a href="https://www.juggluco.nl/Juggluco/glucosebroadcast.html">Glucose
-broadcasts</a>.</span></p>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Wenn
-Sie Juggluco als Datenquelle in G-Watch angeben, müssen Sie diese
-Broadcast aktivieren.</p>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Geben
-Sie die Apps an, an die diese Broadcast gesendet werden soll.</p>
+<p align="left" style="margin-bottom: 0in">Eine neue Broadcast, die
+dieselbe Funktion wie die xDrip Broadcast hat. Eine einfache
+Beispielanwendung, die empfangene Glukosewerte in logcat schreibt,
+finden Sie hier: <a href="https://www.juggluco.nl/Juggluco/glucosebroadcast.html">Glucose
+broadcasts</a>.</p>
+<p align="left" style="margin-bottom: 0in">Wenn Sie Juggluco als
+Datenquelle in G-Watch angeben, müssen Sie diese Broadcast
+aktivieren.</p>
+<p align="left" style="margin-bottom: 0in">Geben Sie die Apps an, an
+die diese Broadcast gesendet werden soll.</p>
 <h2 class="western">Webserver</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Webserver,
-der mit xDrip-Uhren und einigen Nightscout-Apps verwendet werden
-kann. Früher xDrip-Webserver genannt.</p>
+<p align="left" style="margin-bottom: 0in">Webserver, der mit
+xDrip-Uhren und einigen Nightscout-Apps verwendet werden kann. Früher
+xDrip-Webserver genannt.</p>
+<h2 class="western">Insulin onboard (IOB)</h2>
+<p>IOB ist ein Maß dafür, wie viel Insulin von früheren
+Insulindosen noch vorhanden ist. Hierzu müssen Sie Insulindosen
+unter einem Etikett in der Kategorie „ <i>Schnell wirkendes Insulin</i>
+“ eintragen. Sie können im linken Menü→Einstellungen→Webserver→
+<a href="https://www.juggluco.nl/Jugglucohelp/de/setlibrenumtype.html">Mengen
+geben</a> angeben, welche Etiketten „<i>Schnell wirkendes Insulin</i>“
+sind.</p>
+<h2 class="western">Festgesteckt jetzt</h2>
+<p>Wenn „<i>Festgesteckt jetzt</i>“ eingestellt ist, wird der auf
+dem Bildschirm angezeigte Zeitraum nach links gescrollt, sodass sich
+die Gegenwart immer an der gleichen Stelle des Bildschirms befindet.
+Einige Benutzer führen Juggluco auf einem Android-Emulator auf einem
+Computer aus, der einige Meter von ihnen entfernt ist. Wenn
+„<i>Festgesteckt jetzt</i>“ ausgeschaltet ist, verschiebt sich
+die Position des aktuellen Glukosewerts im Laufe der Zeit nach
+rechts, sodass er nach einigen Stunden nicht mehr sichtbar ist. Dies
+macht es erforderlich, zum Computer zu gehen und den Bildschirm
+einige Zentimeter zu scrollen. Wenn „<i>Festgesteckt jetzt</i>“
+aktiviert ist, ist diese Ablenkung nicht mehr erforderlich.</p>
 <h2 class="western">Uploader</h2>
-<p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; line-height: 100%; margin-bottom: 0in">
-Auf einen Nightscout-Server hochladen.</p>
+<p align="left" style="margin-bottom: 0in">Auf einen
+Nightscout-Server hochladen.</p>
 <h2 class="western" align="left">Glukosebenachrichtigung</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">(Früher
-&quot;<i>Glukose in der Statusleiste von Android</i><i>&quot;</i>
-genannt). Wenn die Glukosewerte über Bluetooth gestreamt werden,
-werden sie in einer Benachrichtigung und in der Android-Statusleiste
-angezeigt. Auf einigen Smartphones wird der Glukosewert nur in der
+<p align="left" style="margin-bottom: 0in">(Früher &quot;<i>Glukose
+in der Statusleiste von Android&quot;</i> genannt). Wenn die
+Glukosewerte über Bluetooth gestreamt werden, werden sie in einer
+Benachrichtigung und in der Android-Statusleiste angezeigt. Auf
+einigen Smartphones wird der Glukosewert nur in der
 Android-Statusleiste angezeigt, nachdem man die
 Benachrichtigungseinstellungen des Androiden geändert hat.</p>
-<p style="line-height: 100%; margin-bottom: 0in"><span style="font-weight: normal">Sie
-können auch eine Android-Benachrichtigung erhalten, indem Sie im
-linken mittleren Menü </span><i><span style="font-weight: normal">Benachrichtigen</span></i>
-<span style="font-weight: normal">auswählen. In diesem Fall wird die
+<p style="margin-bottom: 0in">Sie können auch eine
+Android-Benachrichtigung erhalten, indem Sie im linken mittleren Menü
+<i>Benachrichtigen</i> auswählen. In diesem Fall wird die
 Benachrichtigung an einige Smartwatches gesendet, wenn dies so
 konfiguriert ist. Das funktioniert mit Garmin-Uhren, ich weiß nicht,
 ob es mit anderen funktioniert. Alarme generieren auch
-Benachrichtigungen.</span></p>
+Benachrichtigungen.</p>
 <h2 class="western">Schwebende Glukose</h2>
-<p style="line-height: 100%; margin-bottom: 0in">Wenn Sie diese
-einschalten, wird unabhängig davon, welche App im Vordergrund ist,
-ständig ein kleines Bild mit dem aktuellen Glukosewert auf dem
-Bildschirm angezeigt. Wenn Sie es das erste Mal einschalten, werden
-Sie zu einer Liste von Apps weitergeleitet, in denen Sie Juggluco die
-Erlaubnis geben müssen, <b>über anderen Apps angezeigt</b> zu
-werden.</p>
+<p style="margin-bottom: 0in">Wenn Sie diese einschalten, wird
+unabhängig davon, welche App im Vordergrund ist, ständig ein
+kleines Bild mit dem aktuellen Glukosewert auf dem Bildschirm
+angezeigt. Wenn Sie es das erste Mal einschalten, werden Sie zu einer
+Liste von Apps weitergeleitet, in denen Sie Juggluco die Erlaubnis
+geben müssen, <b>über anderen Apps angezeigt</b> zu werden.</p>
 <h2 class="western" align="left">Sensor über Bluetooth</h2>
 <p align="left">Legt fest, ob diese App über Bluetooth mit einem
 Freestyle libre 2 oder 3 Sensor verbunden werden soll. Dies ist für
 Alarme und die kontinuierliche Blutzuckermessung erforderlich.</p>
 <h2 class="western" align="left"><b>Alarme</b></h2>
-<p align="left" style="font-weight: normal">Stellen Sie Alarme für
-hohen und niedrigen Glukosewert, Signalverlustalarm und
-Benachrichtigung über verfügbaren Wert ein.</p>
+<p align="left">Stellen Sie Alarme für hohen und niedrigen
+Glukosewert, Signalverlustalarm und Benachrichtigung über
+verfügbaren Wert ein.</p>
 <h2 class="western" align="left">Zahlenetiketten</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Legen
-Sie die für die Mengen verwendeten Bezeichnungen fest. Gehen Sie zum
-Unterbildschirm, um festzulegen, welche Kennzeichnungen zum Festlegen
-von Mengen verwendet werden, z. B. Insulindosen,
-Kohlenhydratverbrauch und Stunden, die Sie mit Fußballspielen
-verbringen. Wenn Sie auch die Garmin-Uhren-App Kerfstok verwenden,
-werden diese Etiketten an die Uhren-App gesendet.</p>
+<p align="left" style="margin-bottom: 0in">Legen Sie die für die
+Mengen verwendeten Bezeichnungen fest. Gehen Sie zum Unterbildschirm,
+um festzulegen, welche Kennzeichnungen zum Festlegen von Mengen
+verwendet werden, z. B. Insulindosen, Kohlenhydratverbrauch und
+Stunden, die Sie mit Fußballspielen verbringen. Wenn Sie auch die
+Garmin-Uhren-App Kerfstok verwenden, werden diese Etiketten an die
+Uhren-App gesendet.</p>
 <h2 class="western">Sprache</h2>
 <p>Juggluco wird in der gewählten Sprache angezeigt. Wenn kein
 Sprachcode ausgewählt ist, wird die Systemsprache verwendet.</p>
 <h2 class="western" align="left">Erinnerungen</h2>
-<p align="left" style="font-weight: normal; line-height: 100%; margin-bottom: 0in">
-Legen Sie fest, dass ein Alarm ausgelöst werden soll, wenn Sie eine
-bestimmte Menge an Lebensmitteln oder Medikamenten nicht innerhalb
-einer bestimmten Zeitspanne eingegeben haben.</p>
+<p align="left" style="margin-bottom: 0in">Legen Sie fest, dass ein
+Alarm ausgelöst werden soll, wenn Sie eine bestimmte Menge an
+Lebensmitteln oder Medikamenten nicht innerhalb einer bestimmten
+Zeitspanne eingegeben haben.</p>
 <h2 class="western" align="left">Farben</h2>
-<p align="left" style="line-height: 100%; margin-bottom: 0in">Ändern
-Sie die Farben von Kurven, Scans und Zahlen.</p>
+<p align="left" style="margin-bottom: 0in">Ändern Sie die Farben von
+Kurven, Scans und Zahlen.</p>
 ]]>
 </string>
 <string name="shortcuthelp" >
@@ -2293,7 +2400,7 @@ Zeitpunkt des Stoppens des Alarms gelesen.</p>
 <string name="watchinfo" >
 <![CDATA[
 <h1>Uhren</h1>
-<p>Derzeit bietet Juggluco vier Möglichkeiten, um Glukosewerte auf
+<p>Derzeit bietet Juggluco 6 Möglichkeiten, um Glukosewerte auf
 Ihrer Uhr anzuzeigen.</p>
 <h2 class="western">Benachrichtigen</h2>
 <p>Wenn <i>Benachrichtigen</i> aktiviert ist, wird jedes Mal eine
@@ -2398,8 +2505,7 @@ Uhrzeit auch den per Bluetooth empfangenen aktuellen Glukosewert an.</p>
 </string>
 <string name="wearosinfo" >
 <![CDATA[
-<h1 class="western" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; margin-top: 0in; margin-bottom: 0.1in">
-<font face="Liberation Serif, serif">Wear OS</font></h1>
+<h1>Wear OS</h1>
 <p><b>Direkte Sensor-Uhr-Verbindung</b>: Legt fest, ob die Uhr direkt
 mit dem Sensor verbunden werden soll. Dies kann nur geändert werden,
 wenn Uhr und Telefon synchronisiert sind. Verwenden Sie Klon-&gt;Sync
@@ -2407,75 +2513,58 @@ und Reinit auf Telefon und Uhr, um Telefon und Uhr zu
 synchronisieren.</p>
 <p><b>Init watch app</b>: Dies sollte einmal gedrückt werden,
 nachdem Juggluco auf der WearOS-Uhr installiert wurde und läuft.</p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt"><b>Standardwerte</b>:
-Dies setzt die Verbindungseinstellungen auf die Standardwerte. Dies
-besteht aus den Einstellungen, die geändert werden können Linkes
-Menü -&gt; Klon auf der Uhr und linkes mittleres Menü -&gt; Kon auf
-dem Telefon. Sie besteht aus Einstellungen wie „Nur aktiv“ und
+<p style="background: transparent"><b>Standardwerte</b>: Dies setzt
+die Verbindungseinstellungen auf die Standardwerte. Dies besteht aus
+den Einstellungen, die geändert werden können Linkes Menü -&gt;
+Klon auf der Uhr und linkes mittleres Menü -&gt; Kon auf dem
+Telefon. Sie besteht aus Einstellungen wie „Nur aktiv“ und
 „Scans“. Diese Schaltfläche kann gedrückt werden, wenn sich die
 Einstellungen versehentlich durch Wasser in der Dusche oder während
 des Schlafens geändert haben. Wenn Sie auf die Standardeinstellungen
 zurücksetzen, indem Sie die Watch-Version neu installieren oder
 Daten löschen, müssen Sie auch die Mirror-Verbindung auf dem
-Telefon entfernen.</font></font></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Eine
-spezielle Version von Juggluco kann direkt auf einer Wear OS-Uhr
-ausgeführt werden. Es benötigt ein Android-Smartphone mit NFC, um
-den Sensor zu scannen und über eine TCP-Verbindung werden diese
-Daten an die Wear OS-Uhr gesendet. Danach gibt es zwei Möglichkeiten:</font></font></p>
+Telefon entfernen.</p>
+<p style="background: transparent">Eine spezielle Version von
+Juggluco kann direkt auf einer Wear OS-Uhr ausgeführt werden. Es
+benötigt ein Android-Smartphone mit NFC, um den Sensor zu scannen
+und über eine TCP-Verbindung werden diese Daten an die Wear OS-Uhr
+gesendet. Danach gibt es zwei Möglichkeiten:</p>
 <ol>
-	<li><p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Der
-	Sensor bleibt mit dem Smartphone verbunden und das Smartphone sendet
-	jeden Glukosewert, den es über Bluetooth erhält, über TCP an die
-	Wear OS-Uhr;</font></font></p>
-	<li><p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Es
-	ist auch möglich, den Sensor direkt mit der Wear OS-Uhr zu
-	verbinden. Dazu benötigen Sie eine Wear OS-Uhr mit guter
-	Bluetooth-Konnektivität.</font></font></p>
+	<li><p style="background: transparent">Der Sensor bleibt mit dem
+	Smartphone verbunden und das Smartphone sendet jeden Glukosewert,
+	den es über Bluetooth erhält, über TCP an die Wear OS-Uhr;</p></li>
+	<li><p style="background: transparent">Es ist auch möglich, den
+	Sensor direkt mit der Wear OS-Uhr zu verbinden. Dazu benötigen Sie
+	eine Wear OS-Uhr mit guter Bluetooth-Konnektivität.</p></li>
 </ol>
-<p style="orphans: 2; widows: 2; background: transparent"><span style="font-variant: normal"><font face="Times New Roman"><font size="4" style="font-size: 14pt"><span style="letter-spacing: normal"><span lang="de-DE"><span style="font-style: normal"><span style="font-weight: normal">Sie
-können Juggluco für Wear OS von Google Play auf Ihre Uhr
-herunterladen.</span></span></span></span></font></font></span><span style="font-variant: normal"><font face="Times New Roman"><font size="4" style="font-size: 14pt"><span style="letter-spacing: normal"><span lang="de-DE"><span style="font-style: normal"><span style="font-weight: normal">
-</span></span></span></span></font></font></span><span style="font-variant: normal"><font face="Times New Roman"><font size="4" style="font-size: 14pt"><span style="letter-spacing: normal"><span lang="de-DE"><span style="font-style: normal"><span style="font-weight: normal">Einige
-Bilder werden hier gezeigt:</span></span></span></span></font></font></span><span style="font-variant: normal"><span style="letter-spacing: normal">
-</span></span><a href="https://www.juggluco.nl/JugglucoWearOS/index.html"><span style="font-variant: normal"><font face="Times New Roman"><font size="4" style="font-size: 14pt"><span style="letter-spacing: normal"><span lang="de-DE"><span style="font-style: normal"><span style="font-weight: normal">https://www.juggluco.nl/JugglucoWearOS</span></span></span></span></font></font></span></a></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Damit
-es funktioniert, gehen Sie wie folgt vor:</font></font></p>
+<p>Einige Bilder werden hier gezeigt:
+<a href="https://www.juggluco.nl/JugglucoWearOS/index.html">https://www.juggluco.nl/JugglucoWearOS</a></p>
+<p style="background: transparent">Damit es funktioniert, gehen Sie
+wie folgt vor:</p>
 <ul>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Stellen
-	Sie sicher, dass sowohl Bluetooth als auch WIFI auf Uhr und Telefon
-	funktionieren;</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Stellen
-	Sie sicher, dass die Uhr über genügend freien Speicherplatz und
-	RAM verfügt.&nbsp;Es ist möglich, dass Juggluco neu installiert
-	werden muss, wenn dem Gerät in einem kritischen Moment der
-	Speicherplatz ausgeht;</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Stellen
-	Sie sicher, dass die Telefonversion von Juggluco mit dem Sensor
+	<li><p align="left" style="background: transparent">Stellen Sie
+	sicher, dass sowohl Bluetooth als auch WIFI auf Uhr und Telefon
+	funktionieren;</p></li>
+	<li><p align="left" style="background: transparent">Stellen Sie
+	sicher, dass die Uhr über genügend freien Speicherplatz und RAM
+	verfügt.&nbsp;Es ist möglich, dass Juggluco neu installiert werden
+	muss, wenn dem Gerät in einem kritischen Moment der Speicherplatz
+	ausgeht;</p></li>
+	<li><p align="left" style="background: transparent">Stellen Sie
+	sicher, dass die Telefonversion von Juggluco mit dem Sensor
 	funktioniert.&nbsp;Sie müssen den Sensor einige Male scannen, wenn
 	„Sensor via Bluetooth“ eingestellt ist.&nbsp;Das Empfangen von
 	Glukosewerten auf dem Telefon über Bluetooth ist nicht
-	erforderlich;</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Installieren
-	Sie die Wear OS-Version von Juggluco auf Ihrer Wear Os-Uhr und
-	starten Sie sie;</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Gehen
-	Sie auf dem Telefon zum linken Menü -&gt; Uhren -&gt; Wear Os
+	erforderlich;</p></li>
+	<li><p align="left" style="background: transparent">Installieren Sie
+	die Wear OS-Version von Juggluco auf Ihrer Wear Os-Uhr und starten
+	Sie sie;</p></li>
+	<li><p align="left" style="background: transparent">Gehen Sie auf
+	dem Telefon zum linken Menü -&gt; Uhren -&gt; Wear Os
 	Konfigurieren.&nbsp;Ihre Uhr sollte im Spinner angezeigt
-	werden.&nbsp;Drücken Sie „Init Watch App“;</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Wenn
-	alles geklappt hat, wird in beiden Jugglucos eine TCP-Verbindung
+	werden.&nbsp;Drücken Sie „Init Watch App“;</p></li>
+	<li><p align="left" style="background: transparent">Wenn alles
+	geklappt hat, wird in beiden Jugglucos eine TCP-Verbindung
 	konfiguriert und alle Daten des Telefons werden an die Uhr
 	gesendet.&nbsp;Dies kann lange dauern, wenn Sie Juggluco über einen
 	längeren Zeitraum verwendet haben.&nbsp;Sie können überprüfen,
@@ -2493,32 +2582,29 @@ es funktioniert, gehen Sie wie folgt vor:</font></font></p>
 	können also auch die Watch-Version von Juggluco neu
 	installieren.&nbsp;Wenn später nicht die richtige IP angezeigt
 	wird, sollten Sie am Telefon die externe Verbindung (WLAN oder
-	mobile Daten) aus- und wieder einschalten.)</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Wenn
-	alles gut gelaufen ist, werden die gleichen Daten, die auf der
-	Telefonversion von Juggluco angezeigt werden, auf der Uhrenversion
-	von Juggluco angezeigt.&nbsp;Jeder neue Glukosewert, der vom Telefon
-	empfangen wird, wird über TCP an die Uhr gesendet.&nbsp;Einige
-	Einstellungen wie Einheit, Glukose-Alarmwerte und Erinnerungen
-	werden ebenfalls an die Uhr übertragen.&nbsp;Spätere Änderungen
-	sollten an der Uhr selbst vorgenommen werden.</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Wenn
-	Sie eine Smartwatch mit guter Bluetooth-Konnektivität haben und
-	Glukosewerte auf Ihrer Uhr empfangen möchten, ohne Ihr Telefon
-	tragen zu müssen, können Sie die Uhrenversion von Juggluco direkt
-	mit dem Sensor verbinden.&nbsp;Nachdem alle Werte an die Uhr
-	gesendet wurden, können Sie&nbsp;<b>&quot;Direkte
-	Sensor-Uhr-Verbindung&quot;</b> aktivieren&nbsp;.&nbsp;Dadurch wird
-	&quot;Sensor über Bluetooth&quot; im Telefon ausgeschaltet und in
-	der Uhr eingeschaltet.&nbsp;Die Stream-Werte werden jetzt von der
-	Uhr zum Telefon gesendet, wie Sie im Spiegeldialog überprüfen
-	können.&nbsp;Sie können die „Direkte Sensor-Uhr-Verbindung“
-	nicht ändern, wenn Uhr und Telefon nicht synchron sind.</font></font></p>
-	<li><p align="left" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-	<font face="Times New Roman"><font size="4" style="font-size: 14pt">Wenn
-	Sie Mengen von der Uhr zum Telefon senden möchten, sollten Sie die
+	mobile Daten) aus- und wieder einschalten.)</p></li>
+	<li><p align="left" style="background: transparent">Wenn alles gut
+	gelaufen ist, werden die gleichen Daten, die auf der Telefonversion
+	von Juggluco angezeigt werden, auf der Uhrenversion von Juggluco
+	angezeigt.&nbsp;Jeder neue Glukosewert, der vom Telefon empfangen
+	wird, wird über TCP an die Uhr gesendet.&nbsp;Einige Einstellungen
+	wie Einheit, Glukose-Alarmwerte und Erinnerungen werden ebenfalls an
+	die Uhr übertragen.&nbsp;Spätere Änderungen sollten an der Uhr
+	selbst vorgenommen werden.</p></li>
+	<li><p align="left" style="background: transparent">Wenn Sie eine
+	Smartwatch mit guter Bluetooth-Konnektivität haben und Glukosewerte
+	auf Ihrer Uhr empfangen möchten, ohne Ihr Telefon tragen zu müssen,
+	können Sie die Uhrenversion von Juggluco direkt mit dem Sensor
+	verbinden.&nbsp;Nachdem alle Werte an die Uhr gesendet wurden,
+	können Sie&nbsp;<b>&quot;Direkte Sensor-Uhr-Verbindung&quot;</b>
+	aktivieren&nbsp;.&nbsp;Dadurch wird &quot;Sensor über Bluetooth&quot;
+	im Telefon ausgeschaltet und in der Uhr eingeschaltet.&nbsp;Die
+	Stream-Werte werden jetzt von der Uhr zum Telefon gesendet, wie Sie
+	im Spiegeldialog überprüfen können.&nbsp;Sie können die „Direkte
+	Sensor-Uhr-Verbindung“ nicht ändern, wenn Uhr und Telefon nicht
+	synchron sind.</p></li>
+	<li><p align="left" style="background: transparent">Wenn Sie Mengen
+	von der Uhr zum Telefon senden möchten, sollten Sie die
 	Senderichtung im Spiegeldialog selbst umkehren, indem Sie sie auf
 	dem Telefon deaktivieren und auf der Uhr aktivieren.&nbsp;Am Telefon
 	sollte auch „Empfangen von“ eingestellt sein.&nbsp;Wenn nicht
@@ -2527,89 +2613,183 @@ es funktioniert, gehen Sie wie folgt vor:</font></font></p>
 	Mengenetiketten&nbsp;werden immer mit den Mengen versendet&nbsp;<i>.&nbsp;</i>Wenn
 	Sie die Richtung der Übertragung von Mengen von der Uhr zum Telefon
 	ändern, können Sie die Beschriftungen nicht ändern.&nbsp;Es
-	sollte nicht zu einfach sein;</font></font></p>
+	sollte nicht zu einfach sein;</p></li>
 </ul>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Wenn
-der Sensor eine direkte Bluetooth-Verbindung mit der Uhr hat und
-seine Werte an ein Smartphone gesendet werden, sollten gescannte
-Werte auch vom Telefon an die Uhr gesendet und die Stream-Werte
-synchronisiert werden, bevor der Sensor mit Juggluco gescannt wird
-(dies wird automatisch konfiguriert auf diese Weise, wenn <i>&quot;Direkte
+<p style="background: transparent">Wenn der Sensor eine direkte
+Bluetooth-Verbindung mit der Uhr hat und seine Werte an ein
+Smartphone gesendet werden, sollten gescannte Werte auch vom Telefon
+an die Uhr gesendet und die Stream-Werte synchronisiert werden, bevor
+der Sensor mit Juggluco gescannt wird (dies wird automatisch
+konfiguriert auf diese Weise, wenn <i>&quot;Direkte
 Sensor-Uhr-Verbindung&quot;</i> eingestellt ist.). Andernfalls
 könnten alte Werte an die Uhr zurückgesendet werden oder geänderte
 Authentifizierungsinformationen werden nicht an die Uhr gesendet, was
-zu Fehlern beim Entsperren des Schlüssels führt.</font></font></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Auch
-Änderungen an der Verbindung sollten nur bei synchronisierten Daten
-vorgenommen werden;&nbsp;Die Daten auf Telefon und Uhr sollten
-vollständige Kopien sein (mit der Ausnahme, dass
-Sie&nbsp;<u>alle</u>&nbsp;Mengendaten weglassen können).</font></font></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Wenn
-zum ersten Mal viele Daten vom Smartphone zur Uhr übertragen werden
-müssen, können Sie die Uhr an das Ladegerät anschließen.&nbsp;Meine
-Uhr schaltet WLAN ein, wenn sie an das Ladegerät angeschlossen ist.</font></font></p>
-<h5 class="western" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; margin-top: 0.08in; margin-bottom: 0.04in; background: transparent">
-<font face="Liberation Serif, serif">Watch-Phone-Verbindung</font></h5>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Bei
-der Initialisierung, wenn alle Daten vom Telefon zur Uhr gesendet
-werden, benötigen Sie eine WLAN-Verbindung zwischen Uhr und
-Telefon.&nbsp;Später werden Daten in kleinen Stücken über TCP
-gesendet.&nbsp;Auf meiner Uhr wird das über Bluetooth umgeleitet,
-aber nur, wenn das Telefon eine externe Verbindung hat, zum Beispiel
-WLAN zum Heimnetzwerk, eine mobile Datenverbindung oder einen mobilen
-Hotspot.&nbsp;Andernfalls bricht die Verbindung zwischen Telefon und
-Uhr nach einiger Zeit ab, da WLAN vom System abgeschaltet wird, um
-Akkustrom zu sparen.</font></font></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Juggluco
-selbst erkennt die IPs der anderen Seite, sodass Sie sie nicht
-festlegen müssen.&nbsp;Wenn Sie von WLAN auf mobile Daten umstellen,
-werden die IPs automatisch geändert.&nbsp;Manchmal müssen Sie WLAN
-oder mobile Daten auf Ihrem Smartphone aus- und wieder einschalten,
-bevor es funktioniert (Juggluco ermittelt die IP in dem Moment, in
-dem WLAN oder mobile Daten eingeschaltet werden, aber manchmal ist
-die IP dann noch nicht verfügbar.)</font></font></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Spezifisch
-für die Verbindung mit einer WearOS-Uhr ist die automatische
-Bestimmung der IP der Gegenseite;&nbsp;für andere Klon-Verbindungen
-müssen Sie noch die IPs der anderen Seite angeben.</font></font></p>
-<h5 class="western" style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; margin-top: 0.08in; margin-bottom: 0.04in; background: transparent">
-<font face="Liberation Serif, serif">Zifferblatt</font></h5>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Juggluco
-für Wear OS enthält ein Zifferblatt, das neben der Uhrzeit auch
-Ihren aktuellen Glukosespiegel und bis zu vier Komplikationen
-anzeigt.&nbsp;Um es zu nutzen, müssen Sie dieses Zifferblatt zum
-Beispiel in Ihrer Watch Companion App unter &quot;heruntergeladen&quot;
+zu Fehlern beim Entsperren des Schlüssels führt.</p>
+<p style="background: transparent">Auch Änderungen an der Verbindung
+sollten nur bei synchronisierten Daten vorgenommen werden;&nbsp;Die
+Daten auf Telefon und Uhr sollten vollständige Kopien sein (mit der
+Ausnahme, dass Sie&nbsp;<u>alle</u>&nbsp;Mengendaten weglassen
+können).</p>
+<p style="background: transparent">Wenn zum ersten Mal viele Daten
+vom Smartphone zur Uhr übertragen werden müssen, können Sie die
+Uhr an das Ladegerät anschließen.&nbsp;Meine Uhr schaltet WLAN ein,
+wenn sie an das Ladegerät angeschlossen ist.</p>
+<h2 class="western"><strong>Uhr-Telefon-Verbindung</strong></h2>
+<p>Die Uhr-Telefon-Verbindung ist eine Anpassung der Klonverbindung,
+die Sie zwischen Telefonen, auf denen Juggluco läuft, und Computern,
+auf denen der <a href="https://www.juggluco.nl/Juggluco/cmdline">Juggluco-Server</a>
+läuft, konfigurieren können. Wenn die Verbindung zwischen Telefon
+und Uhr auf die oben beschriebene Weise automatisch hergestellt wird,
+gibt es folgende Ergänzungen:</p>
+<ul>
+	<li><p>Die IP der Gegenseite der Verbindung wird automatisch
+	ermittelt. Normalerweise müssen Sie mit der Klonverbindung nichts
+	direkt tun. Stattdessen können Sie die Einstellungen über das
+	linke Menü→Uhren→WearOS-Konfiguration ändern. Die Ausnahme
+	besteht, wenn Sie Zahlen auf der Uhr eingeben möchten. Anschließend
+	müssen Sie die Kloneinstellungen manuell ändern, wie unter <a href="../wearosinfo.html#enteronwatch"><i>Auf
+	der Smartwatch eingeben</i></a> beschrieben .</p></li>
+	<li><p>Wenn die WLAN-Verbindung zwischen Telefon und Uhr nicht
+	funktioniert, wechselt Juggluco zur Verwendung von TCP über
+	Bluetooth. Außer wenn bei der ersten Verwendung viele Daten an die
+	Uhr gesendet werden müssen, können Sie WLAN auf der Uhr
+	ausschalten.</p></li>
+</ul>
+<p style="margin-bottom: 0in">Wenn keine Daten zwischen den Jugglucos
+auf Telefon und Uhr ausgetauscht werden, können Sie Folgendes
+beobachten:</p>
+<ul>
+	<li><p style="margin-bottom: 0in">Bluetooth sollte auf Uhr und
+	Telefon eingeschaltet sein (WLAN kann ausgeschaltet werden);</p></li>
+	<li><p style="margin-bottom: 0in">Die Begleit-App der Uhr sollte
+	anzeigen, dass die Uhr mit dem Telefon verbunden ist;</p></li>
+	<li><p style="margin-bottom: 0in">Im linken Menü→Klon auf der Uhr
+	und im linken mittleren Menü→Klon auf dem Telefon sollte
+	automatisch ein Verbindungseintrag mit der Kennung der Uhr erstellt
+	werden (dieselbe Kennung, die im linken
+	Menü→Uhr→„WearOS-Konfiguration“ auf dem Telefon angezeigt
+	wird);</p></li>
+	<li><p style="margin-bottom: 0in">Das Drücken von Reinit und/oder
+	Sync im linken Menü→Klon auf der Uhr kann helfen;</p></li>
+	<li><p style="margin-bottom: 0in">Manchmal müssen Sie das Gleiche
+	auch am Telefon tun. Danach müssen Sie dies möglicherweise erneut
+	auf der Uhr tun.</p></li>
+	<li><p style="margin-bottom: 0in">Das Aus- und Einschalten von
+	Bluetooth auf dem Telefon oder der Uhr kann hilfreich sein.
+	Anschließend müssen Sie auf der Uhr erneut „Reinit“ und
+	„Synchronisieren“ drücken.</p></li>
+	<li><p style="margin-bottom: 0in">Manchmal ist es erforderlich,
+	dasselbe mit WLAN oder mobilen Daten zu tun.</p></li>
+	<li><p style="margin-bottom: 0in">Manchmal ist ein Neustart des
+	Telefons und/oder der Uhr erforderlich, damit Bluetooth wieder
+	funktioniert.</p></li>
+	<li><p style="margin-bottom: 0in">Es ist möglich, dass die
+	Einstellungen in der Klonverbindung irgendwie auf die falschen Werte
+	geändert werden. Sie können sie auf die ursprünglichen Werte
+	zurücksetzen, indem Sie auf dem Telefon auf das linke
+	Menü→Uhr→„WearOS-Konfiguration“→Standardwerten drücken.
+	Dies hat auch den Effekt, dass der Sensor mit dem Telefon statt mit
+	der Uhr verbunden wird. ACHTUNG: Nur auf der Uhr vorhandene Daten
+	werden überschrieben;</p></li>
+	<li><p style="margin-bottom: 0in">Wenn alles andere fehlschlägt,
+	können Sie die Watch-Version neu installieren und von vorne
+	beginnen. In diesem Fall müssen Sie die bestehende Uhrenverbindung
+	unter Menü links in der Mitte → Klon entfernen.</p></li>
+	<li><p style="margin-bottom: 0in">Wenn die Daten irgendwie auf dem
+	Telefon fehlen, aber auf der Uhr vorhanden sind, ist es viel
+	schwieriger. Irgendwie muss man zunächst eine funktionierende
+	Klonverbindung herstellen, um die Daten auf dem Telefon zu
+	empfangen.</p></li>
+</ul>
+<h2 class="western"><a name="enteronwatch"></a>Auf der Smartwatch
+eingeben</h2>
+<p>Wenn man auf der Uhr Insulin-, Kohlenhydrat- und Aktivitätsmengen
+eingibt, ist das am Telefon nicht mehr möglich. Auch das Scannen von
+Insulinpens ist nicht mehr möglich.</p>
+<p>Derzeit gibt es hierfür keinen einzigen Button. Auf beiden Seiten
+der Klon-Verbindung zwischen der Uhr und dem Begleittelefon müssen
+Sie Änderungen in den Klon-Einstellungen vornehmen. Stellen Sie
+zunächst sicher, dass Telefon und Uhr synchron sind, und gehen Sie
+dann wie folgt vor:</p>
+<h5 class="western">TELEFON:</h5>
+<p>Gehen Sie zu Menü links in der Mitte→Klon. Drücken Sie auf die
+Uhrverbindung und dann auf <i>Ändern</i> . Deaktivieren Sie <i>Mengen</i>
+und achten Sie darauf, dass „<i>Empfangen von“</i> aktiviert ist.
+Klicken Sie anschließend auf „<i>Speichern</i>“ und dann auf „
+<i>Schließen</i>“. Stellen Sie „<i>Klon sendet Mengen</i>“
+ein.</p>
+<h5 class="western">SMARTWATCH:</h5>
+<p>Gehen Sie zum linken Menü→Klon. Drücken Sie auf die
+Uhrverbindung und dann auf <i>Ändern</i>. Aktivieren Sie „
+<i>Mengen</i>“. Stellen Sie „<i>Jetzt</i>“ als Zeitpunkt ein,
+bis zu dem alle Daten bereits auf dem Telefon vorhanden sind. Klicken
+Sie anschließend auf „<i>Speichern</i>“ und dann auf „
+<i>Schließen</i> “. Deaktivieren Sie „<i>Mirror sendet Mengen</i>“.</p>
+<h2 class="western">Zifferblatt</h2>
+<p style="background: transparent">Juggluco für Wear OS enthält ein
+Zifferblatt, das neben der Uhrzeit auch Ihren aktuellen
+Glukosespiegel und bis zu vier Komplikationen anzeigt. Um es zu
+nutzen, müssen Sie dieses Zifferblatt zum Beispiel in Ihrer Watch
+Companion App unter &quot;heruntergeladen&quot;
 auswählen.&nbsp;Normalerweise sehen Sie den letzten Glukosewert,
 wenn der Bildschirm aufwacht.&nbsp;Wenn sich das Display im
 Always-On-Modus befindet, wird der Glukosewert nur aktualisiert, wenn
 die Minutenanzeige erhöht wird oder Sie eine Taste drücken oder
 Ihren Arm heben.&nbsp;Dadurch kann der angezeigte Wert bis zu einer
-Minute verzögert werden.</font></font></p>
-<p style="orphans: 2; widows: 2; background: transparent"><span style="font-variant: normal"><font face="Times New Roman"><font size="4" style="font-size: 14pt"><span style="letter-spacing: normal"><span lang="de-DE"><span style="font-style: normal"><span style="font-weight: normal">Sie
+Minute verzögert werden.</p>
+<p style="background: transparent"><span style="font-variant: normal"><span style="letter-spacing: normal">Sie
 können auch ein anderes Zifferblatt verwenden (z.
 B.&nbsp;<a href="https://play.google.com/store/apps/details?id=com.ustwo.watchfaces.bits">https://play.google.com/store/apps/details?id=com.ustwo.watchfaces.bits</a>&nbsp;)
 und eine App-Verknüpfung zu Juggluco hinzufügen.&nbsp;Auf diese
 Weise können Sie Ihren Glukosespiegel ermitteln, indem Sie auf diese
-Verknüpfung drücken.</span></span></span></span></font></font></span></p>
-<p style="font-variant: normal; letter-spacing: normal; font-style: normal; font-weight: normal; orphans: 2; widows: 2; background: transparent">
-<font face="Times New Roman"><font size="4" style="font-size: 14pt">Mit
-etwas Programmierung können Sie auch ein separates Zifferblatt
-erstellen, das den Glukosewert der Glukose Broadcast von Juggluco
-anzeigt.</font></font></p>
-<p style="orphans: 2; widows: 2; background: transparent"><br/>
+Verknüpfung drücken.</span></span></p>
+<p style="background: transparent">Mit etwas Programmierung können
+Sie auch ein separates Zifferblatt erstellen, das den Glukosewert der
+Glukose Broadcast von Juggluco anzeigt.</p>
+<p style="background: transparent"><br/>
 <br/>
 
 </p>
-<p style="line-height: 100%; margin-bottom: 0in"><br/>
+<p style="margin-bottom: 0in"><br/>
 
 </p>
+]]>
+</string>
+<string name="IOB" >
+<![CDATA[
+<h1>Insulin onboard (IOB)</h1>
+<p>IOB ist ein Maß dafür, wie viel Insulin von früheren
+Insulindosen noch vorhanden ist. Hierzu müssen Sie Insulindosen
+unter einem Etikett in der Kategorie „ <i>Schnell wirkendes Insulin</i>
+“ eintragen. Sie können im linken Menü→Einstellungen→Webserver→
+<a href="https://www.juggluco.nl/Jugglucohelp/de/setlibrenumtype.html">Mengen
+geben</a> angeben, welche Etiketten „<i>Schnell wirkendes Insulin</i>“
+sind.</p>
+<p><br/>
+<br/>
+
+</p>
+]]>
+</string>
+<string name="healthpermission" >
+<![CDATA[
+<h1>Schreiben von <i>Blutzucker</i> zulassen</h1>
+<p>Um Glukosewerte in <b>Health Connect</b> schreiben zu können, muss der Benutzer Juggluco die Berechtigung erteilen, <b>Blutzucker</b>
+in Health Connect zu schreiben.</p>
+<p>Diese Berechtigung ist für nichts anderes als den Empfang von
+Glukosewerten in Health Connect erforderlich. In allen anderen
+Aspekten kann Juggluco ohne diese Erlaubnis funktionieren.</p>
+]]>
+</string>
+<string name="changestart" >
+<![CDATA[
+<h1>Anfang ändern</h1>
+<p>Ändern Sie das Datum und die Uhrzeit, ab der Daten an Libreview
+gesendet werden. Dies kann nützlich sein, wenn einige der Daten
+bereits in Libreview vorhanden sind. Zum Beispiel, nachdem Sie eine
+Klonverbindung verwendet haben, um Daten auf ein anderes Telefon zu
+übertragen, und dann dieses neue Telefon verwendet haben, um Daten
+an Libreview zu senden.</p>
 ]]>
 </string>
 </resources>

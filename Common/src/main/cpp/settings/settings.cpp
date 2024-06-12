@@ -22,7 +22,7 @@
 #define NONOJVM 1
 #endif
 */
-
+#include <signal.h>
 #include "logs.h"
 #include "datbackup.h"
 #include "sensoren.h"
@@ -53,6 +53,14 @@ Meal *meals=nullptr;
 #endif
 
   #include <signal.h>
+
+extern "C" {
+typedef void (*sighandler_t)(int);
+
+sighandler_t bsd_signal(int signum, sighandler_t handler);
+};
+
+#define asignal signal
 #ifndef NOLOG 
 extern bool dolog;
 void handlepipe(int sig) {
@@ -64,7 +72,7 @@ void handlepipe(int sig) {
 #define handlepipe SIG_IGN
 #endif
 void	generalsettings() {
-	signal(SIGPIPE,handlepipe);
+	asignal(SIGPIPE,handlepipe);
 	}
 #ifdef ANDROID__APP
 #ifndef NONOJVM
@@ -75,8 +83,8 @@ void namehandler(int sig) {
 //	const char buf[]="JVM Debugger";
 	const char buf[]="Verdwenen";
 	 prctl(PR_SET_NAME, buf, 0, 0, 0);
-	signal(SIGUSR2,SIG_IGN);
-	int getsockets();
+	asignal(SIGUSR2,SIG_IGN);
+extern	int getsockets();
 	getsockets();
 
       #include <sys/syscall.h>    
@@ -204,7 +212,7 @@ LOGAR("no NEEDSPATH");
 
 #ifdef ANDROID__APP
 #ifndef NONOJVM
-	signal(SIGUSR2,namehandler);
+	asignal(SIGUSR2,namehandler);
 	overwritename();
 #endif
 #ifndef WEAROS
@@ -241,22 +249,32 @@ void startsensors() {
 			return ;
 		destructsensors.reset(sensors);
 		LOGSTRING("Na sensors\n");
-		if( settings->data()->initVersion<21) {
-			sensors->onallsensors([](SensorGlucoseData *hist ) {
-				auto start=hist->getstarthistory();
-				if(start>4) {
-					for(int i=4;i<start;i++)  {
-						if(hist->getglucose(i)->valid()) {
-							hist->setstarthistory(i);
-							break;
-							}
+		if(settings->data()->initVersion<27) {
+         if( settings->data()->initVersion<21) {
+            sensors->onallsensors([](SensorGlucoseData *hist ) {
+               auto start=hist->getstarthistory();
+               if(start>4) {
+                  for(int i=4;i<start;i++)  {
+                     if(hist->getglucose(i)->valid()) {
+                        hist->setstarthistory(i);
+                        break;
+                        }
 
-						}
+                     }
 
-					}
-				}
-				) ;
+                  }
+               }
+               ) ;
+               }
+            sensors->onallsensors([](SensorGlucoseData *hist ) {
+               auto *info=hist->getinfo();
+               if(info->oldhealthconnectiter) {
+                  info->healthconnectiter=info->oldhealthconnectiter;
+                  info->oldhealthconnectiter=0;
+                  }
+                  });
 			}
+
 		}
 	}
 

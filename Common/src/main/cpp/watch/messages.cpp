@@ -47,6 +47,7 @@ struct wearmessage {
 */
 
 #define LOGGERTAG(...) LOGGER("messages: " __VA_ARGS__)
+#define LOGARTAG(...) LOGAR("messages: " __VA_ARGS__)
 #define LOGSTRINGTAG(...) LOGSTRING("messages: " __VA_ARGS__)
 struct wearmessagetype{
    int16_t phonehostnr;
@@ -203,10 +204,11 @@ void sendMessagesON(passhost_t *pass, bool val) {
 	}
 
 bool	sendmessage(const int phonehostnr,bool phonesender,const uint8_t *buf,const int inlen) {
-	LOGGERTAG("start sendmessage(%d,%d,%p#%d)\n",phonehostnr,phonesender,buf,inlen);
 	auto env=getenv();
    	int totlen=inlen+sizeof(wearmessage)-sizeof(wearmessage::len);
+	LOGGERTAG("start sendmessage(%d,%d,%p#%d) totlen=%d\n",phonehostnr,phonesender,buf,inlen,totlen);
 	jbyteArray uit=env->NewByteArray(totlen);
+	LOGARTAG("after env->NewByteArray(totlen)");
 	int start=offsetof(wearmessage,type);
 	int offdata=offsetof(wearmessage,data);
 
@@ -223,7 +225,7 @@ bool	sendmessage(const int phonehostnr,bool phonesender,const uint8_t *buf,const
         bool res=jname?env->CallStaticBooleanMethod(jMessageSender,jsendDatawithName,jname,uit):false;
 #endif
         env->DeleteLocalRef(uit);
-	LOGGER("end sendmessage res=%d",res);
+	LOGGERTAG("end sendmessage res=%d\n",res);
 	return res;
 	}
 void clearnetworkcache() {
@@ -271,19 +273,19 @@ void tobluetooth(int hostnr,bool sender,int *sockin, int *sockother,std::binary_
    while(true) { 
         int inlen=recvni(sock,buf,maxbuf);
        LOGGERTAG("tobluetooth recvni(%d,...)=%d\n",sock,inlen);
-        if(inlen<=0||(status.recv=true&&!(status.sendmessage=sendmessage(phonehost,phonesender,buf,inlen))))  {
-	   if(inlen>0)
-		   LOGGERTAG("sendmessage failed %d %d #%d\n",phonehost,phonesender,inlen);
-	   if(*sockother!=-1) {
-	   	shutdown(*sockother,SHUT_RDWR);
-		}
-	   *sockin=-1;
-	   shutdown(sock,SHUT_RDWR);
-	   close(sock);
-	   status.running(false);
-	  LOGGERTAG("%d %d Return from thread\n",hostnr,sender);
-            return;
-	    }
+     if(inlen<=0||(status.recv=true&&!(status.sendmessage=sendmessage(phonehost,phonesender,buf,inlen))))  {
+         if(inlen>0)
+            LOGGERTAG("sendmessage failed %d %d #%d\n",phonehost,phonesender,inlen);
+         if(*sockother!=-1) {
+            shutdown(*sockother,SHUT_RDWR);
+         }
+         *sockin=-1;
+         shutdown(sock,SHUT_RDWR);
+         close(sock);
+         status.running(false);
+        LOGGERTAG("%d %d Return from thread\n",hostnr,sender);
+               return;
+       }
 	/*
         while(!(status.sendmessage=sendmessage(phonehost,phonesender,buf,inlen))) {
 		LOGGERTAG("sendmessage failed %d %d #%d\n",phonehost,phonesender,inlen);
@@ -384,7 +386,7 @@ int messagemakeconnection(passhost_t *pass,int &sock,crypt_t*ctx,char stype) {
 //bool wearmessages=false;
 
 
-extern bool getwearindex(JNIEnv *env, jstring jident) ;
+extern int getwearindex(JNIEnv *env, jstring jident) ;
 extern "C" JNIEXPORT jboolean  JNICALL   fromjava(getBlueMessage)(JNIEnv *env, jclass cl,int index) {
 	if(index<0)
 		return false;

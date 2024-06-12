@@ -48,6 +48,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -70,11 +71,14 @@ import java.util.concurrent.TimeUnit;
 //import tk.glucodata.Natives;
 
 public class Notify {
+static public final int glucosetimeoutSEC=30*11;
+static public final long glucosetimeout=1000L*glucosetimeoutSEC;
+
     static final private String LOG_ID="Notify";
 static Notify onenot=null;
-static void init() {
+static void init(Context cont) {
 	if(onenot==null) {
-		onenot = new Notify();
+		onenot = new Notify(cont);
 
 		}
 	}
@@ -82,15 +86,15 @@ static String glucoseformat=null;
 static String pureglucoseformat=null;
 static String unitlabel=null;
 //public static int unit=0;
-static void mkunitstr(int unit) {
+static void mkunitstr(Context cont,int unit) {
 	Applic.unit=unit;	
 	pureglucoseformat=unit==1?"%.1f":"%.0f";
 	if(isWearable) {
         	glucoseformat=pureglucoseformat;
 		}
 	else  {
-        	glucoseformat=unit==1?"%.1f mmol/L":"%.0f mg/dL";
-		unitlabel=unit==1?"mmol/L":"mg/dL";
+		unitlabel=unit==1?cont.getString(R.string.mmolL):cont.getString(R.string.mgdL);
+        	glucoseformat=unit==1?"%.1f "+unitlabel:"%.0f "+unitlabel;
 		}
 
 	}
@@ -157,15 +161,15 @@ static RemoteGlucose arrowNotify;
 			DisplayMetrics metrics= Applic.app.getResources().getDisplayMetrics();
 			Log.i(LOG_ID,"metrics.density="+ metrics.density+ " width="+metrics.widthPixels+" height="+metrics.heightPixels);
 			var notwidth=Math.min(metrics.widthPixels,metrics.heightPixels);
-			arrowNotify=new RemoteGlucose(glucosesize,notwidth,0.12f,whiteonblack?1:0);
+			arrowNotify=new RemoteGlucose(glucosesize,notwidth,0.12f,whiteonblack?1:0,false);
 		}
 	}
 
-	Notify() {
+	Notify(Context cont) {
 		showalways=Natives.getshowalways();
 		Log.i(LOG_ID,"showalways="+showalways);
 		alertseparate=Natives.getSeparate( );
-		mkunitstr(Natives.getunit());
+		mkunitstr(cont,Natives.getunit());
 		notificationManager =(NotificationManager) Applic.app.getSystemService(NOTIFICATION_SERVICE);
 		createNotificationChannel(Applic.app);
 		mkpaint();
@@ -344,6 +348,14 @@ static public String glucosestr(float gl) {
 	void stopvibratealarm() {
 		vibrator.cancel();
 	}
+private static int  lastalarm=-1;
+
+static	void stoplossalarm(){
+	if(lastalarm==4) {
+		lastalarm=-1;
+		stopalarm();
+		}
+	}
 	private synchronized void playringhier(Ringtone ring,int duration,boolean sound,boolean flash,boolean vibrate,boolean disturb,int kind) {
 		stopalarm();
 //		final int[] curfilter={-1};
@@ -375,6 +387,7 @@ static public String glucosestr(float gl) {
 			vibratealarm(kind);
 		}
 		runstopalarm= () -> {
+         		lastalarm=-1;
 			if(getisalarm()) {
 				Log.d(LOG_ID,"runstopalarm  isalarm");
 				if(sound) {
@@ -383,15 +396,6 @@ static public String glucosestr(float gl) {
 							Log.d(LOG_ID,"stop sound "+ring.getTitle(app));
 							}
 						ring.stop();
-						/*
-						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-							if (curfilter[0] != -1) {
-								if (notificationManager.isNotificationPolicyAccessGranted()) {
-									notificationManager.setInterruptionFilter(curfilter[0]);
-									}
-								}
-							}
-							*/
 						}
 					}
 
@@ -416,9 +420,10 @@ static public String glucosestr(float gl) {
 				}
 			}
 		};
-		setisalarm(true);
-		Log.d(LOG_ID,"schedule stop");
-		stopschedule=Applic.scheduler.schedule(runstopalarm, duration, TimeUnit.SECONDS);
+	lastalarm=kind;
+	setisalarm(true);
+	Log.d(LOG_ID,"schedule stop");
+	stopschedule=Applic.scheduler.schedule(runstopalarm, duration, TimeUnit.SECONDS);
 
 	}
 	void mksound(int kind) {
@@ -452,21 +457,22 @@ static public String glucosestr(float gl) {
 			}
 	}
 	private void soundalarm(int kind,int draw,String message,String type,boolean alarm) {
-		placelargenotification(draw,message,type,!alarm);
 		if(alarm) {
 			Log.d(LOG_ID,"soundalarm "+kind);
 			mksound(kind);
 		}
+		placelargenotification(draw,message,type,!alarm);
 	}
 
 	private void arrowsoundalarm(int kind,int draw,String message,notGlucose sglucose,String type,boolean alarm) {
-		arrowplacelargenotification(kind,draw,message,sglucose,type,!alarm);
 		if(alarm) {
 			makeseparatenotification(draw,message, sglucose,type);
 			Log.d(LOG_ID,"arrowsoundalarm "+kind);
 			mksound(kind);
 		}
+		arrowplacelargenotification(kind,draw,message,sglucose,type,!alarm);
 	}
+
 
 	private void glucosealarm(int kind,int draw,String message,String type,boolean alarm) {
 		Log.i(LOG_ID,"glucose alarm kind="+kind+" "+message+" alarm="+alarm);
@@ -529,7 +535,9 @@ static public String glucosestr(float gl) {
 
 	static final String fromnotification="FromNotification";
 	final static int forcecloserequest=7812;
+	final static int stopalarmrequest=7810;
 	static final String closename= "ForceClose";
+	static final String stopalarm= "StopAlarm";
 	final static int penmutable= android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M? PendingIntent.FLAG_IMMUTABLE:0;
 
 private void  makeseparatenotification(int draw,String message,notGlucose glucose,String type) {
@@ -572,16 +580,18 @@ static public boolean alertseparate=false;
 			GluNotBuilder.setDeleteIntent(DeleteReceiver.getDeleteIntent());
 			}
 		Log.i(LOG_ID,"makearrownotification setOnlyAlertOnce("+once+") "+glucose.value);
-		GluNotBuilder.setSmallIcon(draw).setOnlyAlertOnce(once).setContentTitle(message);
+		GluNotBuilder.setSmallIcon(draw).setOnlyAlertOnce(once); 
+		GluNotBuilder.setContentTitle(message);
+
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 			GluNotBuilder.setVisibility(VISIBILITY_PUBLIC);
-		}
+			}
+
 		if(!isWearable) {
-			if(TargetSDK<31||Build.VERSION.SDK_INT < 31) {
-				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-					GluNotBuilder.setStyle(new Notification.DecoratedCustomViewStyle());
-					}
-				}
+		      if(Build.VERSION.SDK_INT  >= 24) {
+				GluNotBuilder.setStyle(new Notification.DecoratedCustomViewStyle());
+		//	GluNotBuilder.setStyle( new Notification.DecoratedMediaCustomViewStyle());
+			}
 			GluNotBuilder.setShowWhen(true);
 			RemoteViews remoteViews=arrowNotify.arrowremote(kind,glucose);
 			if(whiteonblack) {
@@ -620,6 +630,7 @@ static public boolean alertseparate=false;
 
     }
 @SuppressWarnings({"deprecation"})
+
 private PendingIntent mkpending() {
 	Intent notifyIntent = new Intent(Applic.app,MainActivity.class);
 	notifyIntent.putExtra(fromnotification,true);
@@ -660,7 +671,7 @@ private Notification.Builder   mkbuilder(String type) {
 
 
 
-static final private boolean  alertseperate=true;
+//static final private boolean  alertseperate=true;
 
 
 void fornotify(Notification notif) {
@@ -679,8 +690,7 @@ void fornotify(Notification notif) {
 		       }
 		}
 	}
-//static final long glucosetimeout=1000*60*5;
-static final long glucosetimeout=1000*60*3;
+//static final long glucosetimeout=1000*60*3;
 
 	/*
 	@SuppressWarnings("deprecation")
@@ -769,7 +779,7 @@ Notification getforgroundnotification() {
 	}
 
 static public void shownovalue() {
-	init();
+	init(Applic.app);
 	onenot.novalue();
 	}
 private void novalue() {
@@ -785,7 +795,7 @@ public void foregroundno(Service service) {
 	}
 static public void foregroundnot(Service service) {
 //	Application app=service.getApplication();
-	init();
+	init(service);
 	onenot.foregroundno(service);
 	}	
  public void  placelargenotification(int draw,String message,String type,boolean once) {
@@ -842,16 +852,9 @@ public void  notifyer(int draw,String message,String type,int notid) {
 
 //	notificationManager.cancel(glucosenotificationid);
 
-	 Intent notifyIntent = new Intent(Applic.app,MainActivity.class);
-	notifyIntent.putExtra(fromnotification,true);
-        notifyIntent.addCategory(Intent. CATEGORY_LAUNCHER ) ;
-        notifyIntent.setAction(Intent. ACTION_MAIN ) ;
-        notifyIntent.setFlags(Intent. FLAG_ACTIVITY_CLEAR_TOP | Intent. FLAG_ACTIVITY_SINGLE_TOP );
-	PendingIntent notifyPendingIntent = PendingIntent.getActivity(Applic.app, 0, notifyIntent, PendingIntent.FLAG_UPDATE_CURRENT|penmutable);
 
-	NumNotBuilder.setAutoCancel(true).setContentIntent(notifyPendingIntent).
+	NumNotBuilder.setAutoCancel(true).setContentIntent(mkpending()).
 setDeleteIntent(DeleteReceiver.getDeleteIntent()) .setContentTitle(message);
-//	NumNotBuilder.setAutoCancel(true).setContentIntent(notifyPendingIntent).setSubText(message);
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
 			NumNotBuilder.setVisibility(VISIBILITY_PUBLIC);
 			NumNotBuilder.setCategory(Notification.CATEGORY_ALARM);

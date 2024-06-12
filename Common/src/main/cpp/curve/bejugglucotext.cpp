@@ -85,6 +85,7 @@ jugglucotext betext {
 	.lastscanned="Апошняе сканаванне:",
 	.laststream="Апошні паток:",
 	.sensorends="Датчык заканчваецца: ",
+	.sensorexpectedend="Expected to end: ",
 #ifndef WEAROS
 	.newamount="Новая сума",
 	.averageglucose="Сярэдняя глюкоза: ",
@@ -172,8 +173,10 @@ jugglucotext betext {
 .Falling="Падзенне",
 .Stable="Мяняецца павольна",
 .Rising="Падымаецца",
-.RisingQuickly="Хутка падымаецца"
+.RisingQuickly="Хутка падымаецца",
+.sibionics="Sibionics",
 #endif
+        .receivingpastvalues="Receiving old values"
 		}
 
 

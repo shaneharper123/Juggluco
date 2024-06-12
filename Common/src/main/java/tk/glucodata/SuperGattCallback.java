@@ -26,6 +26,8 @@ import android.app.Application;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
@@ -38,6 +40,7 @@ import static tk.glucodata.Applic.app;
 import static tk.glucodata.Applic.isWearable;
 import static tk.glucodata.Applic.mgdLmult;
 import static tk.glucodata.Natives.thresholdchange;
+import static tk.glucodata.SensorBluetooth.blueone;
 
 public abstract class SuperGattCallback extends BluetoothGattCallback {
 volatile protected	boolean stop=false;
@@ -79,8 +82,7 @@ public static boolean doGadgetbridge=false;
 	boolean superseded=false;
 	public final int sensorgen;
 	int readrssi=9999;
-	private long sensorstartmsec;
-//	public SuperGattCallback(SensorBluetooth sensorbluetooth, String SerialNumber, long dataptr);
+	protected long sensorstartmsec;
 protected	SuperGattCallback(String SerialNumber,long dataptr,int gen) {
 	this.SerialNumber = SerialNumber;
 	this.dataptr = dataptr;
@@ -91,8 +93,13 @@ protected	SuperGattCallback(String SerialNumber,long dataptr,int gen) {
 	}
 public void disconnect() {
 	final var thegatt= mBluetoothGatt;
-	if(thegatt!=null)
+	if(thegatt!=null) {
+		Log.i(LOG_ID,"Disconnect");
 		thegatt.disconnect();
+		}
+     else  {
+		Log.i(LOG_ID,"Disconnect mBluetoothGatt==null");
+      }
 	}
 public void reconnect(long old) {
 	if(charcha[1]<old)  {
@@ -227,7 +234,7 @@ static void endtalk() {
 			}
 			;
 		} catch (Throwable e) {
-			Log.stack(LOG_ID, e);
+			Log.stack(LOG_ID,SerialNumber, e);
 		}
 		Log.v(LOG_ID, SerialNumber + " "+tim+" glucose=" + gl + " " + rate);
 		Applic.updatescreen();
@@ -248,9 +255,9 @@ static void endtalk() {
 		if(tim>nexttime) {
 			nexttime=tim+mininterval;
 			if(!isWearable) {
-				if(Natives.getlibrelinkused())
-					XInfuus.sendGlucoseBroadcast(SerialNumber, mgdl, rate, timmsec);
-
+				if(Natives.getlibrelinkused()) XInfuus.sendGlucoseBroadcast(SerialNumber, mgdl, rate, timmsec);
+            if(Natives.geteverSensebroadcast()) EverSense.broadcastglucose(mgdl, rate, timmsec);
+				//SendNSClient.broadcastglucose(mgdl, rate, timmsec);
 				}
 			if(Natives.getxbroadcast())
 				SendLikexDrip.broadcastglucose(mgdl,rate,timmsec,sensorstartmsec);
@@ -264,7 +271,29 @@ static void endtalk() {
 			}
 
 	}
-
+boolean stopHealth=false;
+private boolean	dohealth(SuperGattCallback one) {
+if(!isWearable) {
+		var blue=blueone;
+		if(blue==null)
+			return true; //false?
+	   final var gatts=blue.gattcallbacks;
+	   boolean other=gatts.size()>1;
+	   if(!other) {
+	   	return true; //TODO stopHealth=false
+		}
+	   if(stopHealth)
+	   	return false;
+	   for(var el:gatts) {
+	   	if(el!=one)
+			el.stopHealth=true;
+	   	}
+	return true;
+	}
+else {
+	return false;
+	}
+	}
 protected void handleGlucoseResult(long res,long timmsec) {
 		int glumgdl = (int) (res & 0xFFFFFFFFL);
 		if (glumgdl != 0) {
@@ -275,6 +304,16 @@ protected void handleGlucoseResult(long res,long timmsec) {
 			float rate = ratein / 1000.0f;
 			dowithglucose(SerialNumber, glumgdl, gl, rate, alarm, timmsec,sensorstartmsec);
 			charcha[0] = timmsec;
+			if(!isWearable) {
+				if(Natives.gethealthConnect( )) {
+				    if(Build.VERSION.SDK_INT >= 28) {
+					if(dohealth(this)) {
+							final long sensorptr = Natives.getsensorptr(dataptr);//TODO: set sensorptr in SuperGattCallback?
+							HealthConnection.Companion.writeAll(sensorptr,SerialNumber);
+							}
+						}
+					}
+				}
 			SensorBluetooth.othersworking(this,timmsec);
 		} else {
 			Log.i(LOG_ID, SerialNumber + " onCharacteristicChanged: Glucose failed");
@@ -283,9 +322,10 @@ protected void handleGlucoseResult(long res,long timmsec) {
 	}
 
 public void searchforDeviceAddress() {
-	Log.i(LOG_ID,"searchforDeviceAddress()");
+	Log.i(LOG_ID,SerialNumber+" searchforDeviceAddress()");
 
-	setDeviceAddress(null);
+	//setDeviceAddress(null);
+	mActiveDeviceAddress = null;
 	close();
 	}	
 	String getinfo() {
@@ -306,17 +346,17 @@ public void searchforDeviceAddress() {
 		mActiveBluetoothDevice = device;
 		if(device!=null) {
 			String address=device.getAddress();
-			Log.i(LOG_ID,"setDevice("+address+")");
+			Log.i(LOG_ID,SerialNumber+"setDevice("+address+")");
 			setDeviceAddress(address);
 			}
 		else  {
-			Log.i(LOG_ID,"setDevice("+null+")");
+			Log.i(LOG_ID, SerialNumber +" "+"setDevice("+null+")");
 			setDeviceAddress(null);
 			}
 	}
 
 	public void setDeviceAddress(String address) {
-		Log.i(LOG_ID,"setDeviceAddress("+ address+")");
+		Log.i(LOG_ID, SerialNumber +" "+"setDeviceAddress("+ address+")");
 		mActiveDeviceAddress = address;
 		Natives.setDeviceAddress(dataptr, address);
 	}
@@ -346,36 +386,39 @@ public void searchforDeviceAddress() {
 				mess = mess == null ? "" : mess;
 				String uit = ((Build.VERSION.SDK_INT > 30) ? Applic.app.getString(R.string.turn_on_nearby_devices_permission)  : mess) ;
 				Applic.Toaster(uit);
-				Log.stack(LOG_ID, "BluetoothGatt.close()", se);
+				Log.stack(LOG_ID, SerialNumber +" "+ "BluetoothGatt.close()", se);
 			}
 		finally {	
 			mBluetoothGatt = null;
 			}
+		}
+	else {
+		Log.i(LOG_ID,"mBluetoothGatt==null");
 		}
 
 	}
 	private Runnable getConnectDevice(long delayMillis) {
 		var cb = this;
 		close();
-		if (cb.mActiveBluetoothDevice == null) {
-			Log.i(LOG_ID,"cb.mActiveBluetoothDevice == null");
+		if(cb.mActiveDeviceAddress ==null|| cb.mActiveBluetoothDevice == null) {
+			Log.i(LOG_ID, SerialNumber +" "+"cb.mActiveBluetoothDevice == null");
 			foundtime = 0L;
 			return null;
 		}
 		return () -> {
 			Log.i(LOG_ID,"getConnectDevice Runnable "+ SerialNumber);
 			var device= cb.mActiveBluetoothDevice;
-			var sensorbluetooth=SensorBluetooth.blueone;
+			var sensorbluetooth= blueone;
 			if(sensorbluetooth==null) {
-				Log.e(LOG_ID,"sensorbluetooth==null");
+				Log.e(LOG_ID, SerialNumber +" "+"sensorbluetooth==null");
 				return;
 				}
 			if(!sensorbluetooth.bluetoothIsEnabled()) {
-				Log.e(LOG_ID,"!sensorbluetooth.bluetoothIsEnabled()");
+				Log.e(LOG_ID, SerialNumber +" "+"!sensorbluetooth.bluetoothIsEnabled()");
 				return ;
 				}
 			if(device==null) {
-				Log.e(LOG_ID,"device==null");
+				Log.e(LOG_ID, SerialNumber +" "+"device==null");
 				return;
 				}
 		
@@ -405,9 +448,9 @@ public void searchforDeviceAddress() {
 					String uit = ((Build.VERSION.SDK_INT > 30) ? Applic.app.getString(R.string.turn_on_nearby_devices_permission)  : mess) ;
 					Applic.Toaster(uit);
 
-					Log.stack(LOG_ID, "connectGatt", se);
+					Log.stack(LOG_ID, SerialNumber +" "+ "connectGatt", se);
 				} catch (Throwable e) {
-					Log.stack(LOG_ID, "connectGatt", e);
+					Log.stack(LOG_ID, SerialNumber +" "+ "connectGatt", e);
 
 					}
 		};
@@ -435,7 +478,32 @@ public void searchforDeviceAddress() {
 			}
 			}
 		else {
-			Log.e(LOG_ID,"setpriority BluetoothGatt==null");
+			Log.e(LOG_ID, SerialNumber +" "+"setpriority BluetoothGatt==null");
 			}
+	}
+
+@SuppressLint("MissingPermission")
+ protected  final boolean enableNotification(BluetoothGatt mBluetoothGatt, BluetoothGattCharacteristic bluetoothGattCharacteristic) {
+	Log.i(LOG_ID, SerialNumber +" "+	"enableNotification");
+        if(!mBluetoothGatt.setCharacteristicNotification(bluetoothGattCharacteristic, true)) {
+		Log.e(LOG_ID, SerialNumber +" "+"setCharacteristicNotification("+bluetoothGattCharacteristic.getUuid().toString()+",true) failed");
+
+		}
+        BluetoothGattDescriptor descriptor = bluetoothGattCharacteristic.getDescriptor(mCharacteristicConfigDescriptor);
+        if(!descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
+		Log.e(LOG_ID, SerialNumber +" "+"descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE))  failed");
+		}
+        if(!mBluetoothGatt.writeDescriptor(descriptor)) {
+		Log.e(LOG_ID, SerialNumber +" "+"mBluetoothGatt.writeDescriptor(descriptor))  failed");
+		return false;
+		}
+	return true;
+        }
+
+protected final boolean asknotification(BluetoothGattCharacteristic charac) {
+		return enableNotification(mBluetoothGatt, charac);
+	}
+public boolean matchDeviceName(String deviceName,String address) {
+	return false;
 	}
 }

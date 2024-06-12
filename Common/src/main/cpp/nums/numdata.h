@@ -82,6 +82,7 @@ static constexpr const int libreSolid=168;
 static constexpr const int nightStart=172;
 static constexpr const int nightSend=176;
 static constexpr const int nightSwitch=180;
+static constexpr const int nightIDstart=184;
 static constexpr const int datastart=256;
 std::unique_ptr<char[]> newnumsfile;
 protected:
@@ -354,7 +355,8 @@ const int32_t getlibresend() const  {
 	return *reinterpret_cast<const int32_t *>(raw+libresend);
 	}
 
-const int32_t nextlibresend(uint32_t after=time(nullptr)-librekeepsecs) const {
+//const int32_t nextlibresend(uint32_t after=time(nullptr)-librekeepsecs) const {
+const int32_t nextlibresend(uint32_t after) const {
 	const int32_t next=getlibresend();
 	const auto lastpo=getlastpos();
 	if(next>=lastpo) {
@@ -421,10 +423,17 @@ const int32_t getnightSend() const  {
 	const char *raw=reinterpret_cast<const char *>(nums.data());
 	return *reinterpret_cast<const int32_t *>(raw+nightSend);
 	}
+
 int32_t &getnightSwitch()  {
 	char *raw=reinterpret_cast<char *>(nums.data());
 	return *reinterpret_cast<int32_t *>(raw+nightSwitch);
 	}
+
+int32_t &getnightIDstart()  {
+	char *raw=reinterpret_cast<char *>(nums.data());
+	return *reinterpret_cast<int32_t *>(raw+nightIDstart);
+	}
+
 void nightBack(int pos) {
 	auto was=getnightStart();
 	if(pos<was)
@@ -544,6 +553,14 @@ Num* firstnotless(const uint32_t tim) {
 	Num *en= end();
 	auto comp=[](const Num &el,const Num &se ){return el.time<se.time;};
   	return std::lower_bound(beg,en, zoek,comp);
+	}
+const Num* firstnotless(const uint32_t tim) const {
+    Numdata *mthis=const_cast<Numdata*>(this);
+    Num *num=mthis->firstnotless(tim);
+	return const_cast<const Num *>(num);
+	}
+int firstnotlessIndex(const uint32_t tim) const {
+	return firstnotless(tim)-startdata(); 
 	}
 /*
 struct Num {
@@ -820,11 +837,11 @@ void addlibrenumsdeleted(const Num *num,int ind) { //Moet VOOR  andere libre ope
 	}
 void	libremovesmaller(int from,int to,int movelen) {  //to smaller than from
 	int nrsend=getlibresend();
-	auto *beg=libreids.data();
 	if(to>=nrsend) {
 		LOGGERTAG("libremove(%d,%d) nrsend=%d  from>to>=nrsend\n",from,to,nrsend);
 		return;
 		}
+	auto *beg=libreids.data();
 	int len=nrsend-from;
 	if(len>0) {
 		memmove(beg+to,beg+from,sizeof(*beg)*std::min(len,movelen));
@@ -855,11 +872,11 @@ void	libremovesmaller(int from,int to,int movelen) {  //to smaller than from
 
 void	libremovelarger(int from,int to,int movelen) { //to>from
 	int nrsend=getlibresend();
-	auto *beg=libreids.data();
 	if(from>=nrsend) {
 		LOGGERTAG("libremove(%d,%d) nrsend=%d  to>=from>=nrsend\n",from,to,nrsend);
 		return;
 		}
+	auto *beg=libreids.data();
 	int len=nrsend-from;
 	memmove(beg+to,beg+from,sizeof(*beg)*std::min(len,movelen));
 	if(movelen>=len)
@@ -1348,5 +1365,7 @@ bool backupnums(const struct numsend* innums) {
 //update sizes? startpos?
 };
 #undef  devicenr 
+#undef LOGGERTAG
+#undef LOGARTAG
 
 #endif

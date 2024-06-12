@@ -22,6 +22,7 @@
 package tk.glucodata;
 
 
+import static android.content.Intent.EXTRA_PERMISSION_GROUP_NAME;
 import static android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS;
 import static android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM;
 import static android.view.View.GONE;
@@ -33,12 +34,12 @@ import static tk.glucodata.Applic.isWearable;
 import static tk.glucodata.Applic.scanpermissions;
 import static tk.glucodata.Applic.talkbackoff;
 import static tk.glucodata.Applic.talkbackon;
+import static tk.glucodata.BuildConfig.SiBionics;
 import static tk.glucodata.Floating.setfloatglucose;
 import static tk.glucodata.Floating.shoulduseadb;
 import static tk.glucodata.GlucoseCurve.STEPBACK;
-import static tk.glucodata.Natives.getRTL;
-import static tk.glucodata.Natives.hasstreamed;
 import static tk.glucodata.Log.showbytes;
+import static tk.glucodata.Natives.hasSibionics;
 import static tk.glucodata.Natives.wakelibreview;
 import static tk.glucodata.help.hidekeyboard;
 import static tk.glucodata.settings.Settings.removeContentView;
@@ -51,11 +52,11 @@ import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ConfigurationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.content.res.Resources;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.nfc.NfcAdapter;
@@ -71,10 +72,8 @@ import android.view.View;
 import android.view.accessibility.AccessibilityManager;
 import android.widget.Toast;
 
-import androidx.activity.ComponentActivity;
 import androidx.annotation.UiThread;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 
 import java.io.File;
@@ -84,8 +83,9 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
-import java.util.Locale;
 
+//import androidx.activity.OnBackPressedCallback;
+//import androidx.activity.OnBackPressedDispatcher;
 //import com.google.android.apps.auto.sdk.CarActivity;
 ;
 
@@ -99,21 +99,22 @@ public class MainActivity extends AppCompatActivity implements NfcAdapter.Reader
 
 //public class MainActivity extends CarActivity implements NfcAdapter.ReaderCallback  {
 //    boolean    hideSystem=true;
+    LaunchShit  permHealth=isWearable?null:new LaunchShit(this);
     GlucoseCurve curve=null;
 //    Button okbutton=null;
     private static final String LOG_ID = "MainActivity";
     private NfcAdapter mNfcAdapter=null;
 boolean started=false;
 void startall() {
-	Log.d(LOG_ID,"startall");
-	if(!started)  {
+	Log.d(LOG_ID, "startall");
+	if (!started) {
 		startdisplay();
 		// started=true;
 		netinitstep();
-		 }
-	 }
-void askNotify() {
-        if(Build.VERSION.SDK_INT >=33)  {
+		}
+}
+boolean askNotify() {
+      if(Build.VERSION.SDK_INT >=33)  {
 		var perm= Manifest.permission.POST_NOTIFICATIONS;
 		if(ContextCompat.checkSelfPermission(this, perm)!= PackageManager.PERMISSION_GRANTED)  {
 			var permar=new String[]{perm};
@@ -125,14 +126,15 @@ void askNotify() {
 			else   {
 				requestPermissions(permar, NOTIFICATION_PERMISSION_REQUEST_CODE);
 				}
-			return;
+			return false;
 			}
 		}
 	explicit(this);
+   return true;
 	}
 void startdisplay() {
-  Log.i(LOG_ID,"startdisplay");
-Applic app=	(Applic)getApplication();
+   Log.i(LOG_ID,"startdisplay");
+   Applic app=	(Applic)getApplication();
 	app.setbackgroundcolor(this) ;
 	if(Applic.Nativesloaded)
 	    app.needsnatives() ;
@@ -233,14 +235,15 @@ private void supportRTL() {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+		thisone=this;
 	/*
 	if(getRTL())
 		supportRTL();
 	else
 		supportLTR(); */
-	if(Applic.app.stopprogram>0){
-		android.util.Log.e(LOG_ID,"Stop program");
-		if(Applic.app.stopprogram==1)
+	if(Applic.stopprogram >0){
+		Log.e(LOG_ID,"Stop program");
+		if(Applic.stopprogram ==1)
 			outofStorageSpace();
 		else {
 			makefilesfailed();
@@ -266,10 +269,10 @@ private void supportRTL() {
 //	setTheme(R.style.AppTheme);
 //	setTheme(R.style.AppTheme);
 	showSystemUI();
-	if(!glversion()) return;
+	if(!glversion())
+		return;
 
-        startall();
-	thisone=this;
+    startall();
 	/*
 	if(!isWearable) {
 		new Thread(() -> {
@@ -281,18 +284,29 @@ private void supportRTL() {
 //       if(!isRelease) Test.test();
 	if(Menus.on)
 		Menus.show(this);
+	/*new OnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+    	@Override
+		public void handleOnBackPressed() {
+		Log.d(LOG_ID, "handleOnBackPressed");
+		if(!backinapp())  {
+			Log.d(LOG_ID, "moveTaskToBack");
+			moveTaskToBack(true);
+			}
+	  }
+	}); */
     }
 void handleIntent(Intent intent) {
 	if(intent==null)
 		return;
 	final Bundle extras = intent.getExtras();
 	if(extras!=null)  {
-		Log.i(LOG_ID,"fromnotification");
 		if(extras.getBoolean(Notify.fromnotification, false)) {
+			Log.i(LOG_ID,"fromnotification");
 			Notify.stopalarm();
 			return;
 			}
 		else   {
+			Log.i(LOG_ID,"not fromnotification");
 			if(extras.containsKey(setbluetoothon)) {
 			    Applic.setbluetooth(this,extras.getBoolean(setbluetoothon,false) );
 			    return;
@@ -300,18 +314,37 @@ void handleIntent(Intent intent) {
 			var message=extras.getString("alarmMessage");
         		if(message!=null) {
 				var cancel=extras.getBoolean("Cancel",false);
+				Log.i(LOG_ID,"alarmMessage "+message+" cancel="+cancel);
 				showindialog(message,cancel);
 				return;
 				}
 			}
 		}
+	var action= intent.getAction();
 
-       if ((intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0&&"android.nfc.action.TECH_DISCOVERED".equals(intent.getAction())) {
+       if ((intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0&&"android.nfc.action.TECH_DISCOVERED".intern()==action) {
            curve.waitnfc=true;
            Log.d(LOG_ID,"TECH_DISCOVERED");
            Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
            startnfc(tag);
+	   return;
        }
+      if("androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE".intern() ==action)  {
+		help.help(R.string.healthpermission,this);
+		return;
+		}
+      if("android.intent.action.VIEW_PERMISSION_USAGE".intern()==action)  {
+	final var groupname=extras.getString(EXTRA_PERMISSION_GROUP_NAME);
+	switch(groupname) {
+		case "android.permission-group.HEALTH"->help.help(R.string.healthpermission,this);
+		case "android.permission-group.NOTIFICATIONS"-> help.help(R.string.notificationpermission,this);
+		case "android.permission-group.NEARBY_DEVICES"-> help.help(R.string.nearbypermission,this);
+		case "android.permission-group.CAMERA"-> help.help(R.string.camerapermission,this);
+		default-> Log.i(LOG_ID,"EXTRA_PERMISSION_GROUP_NAME="+groupname); 
+		};
+	return;
+      	}
+
 //       else hideSystem=true;
    }
 static final String setbluetoothon="setbluetoothon";
@@ -397,15 +430,16 @@ static Deque<String>  shownummessage=new ArrayDeque<>();
 static  String showmessage=null;
 
 
-
+static public int tryHealth=5;
 private static int resumenr=isRelease?10:2;
+static boolean tocalendarapp=false;
     @Override
     protected void onResume() {
         super.onResume();
 	if(Applic.stopprogram>0)
 		return;
 	if(!DiskSpace.check(this)) {
-		android.util.Log.e(LOG_ID,"Stop program");
+		Log.e(LOG_ID,"Stop program");
 		Applic.stopprogram=1;
 		outofStorageSpace();
 		return;
@@ -446,15 +480,39 @@ private static int resumenr=isRelease?10:2;
 				 Log.i(LOG_ID,"Natives.getaskedNotify( )");
 			 }
 		} */
+	if(Natives.gethidefloatinJuggluco())
+		Floating.removeFloating();
+	boolean showsdialog=false;
 	for(var el:shownummessage) {
 		showindialog(el,false);
+	 	showsdialog=true;
 		}
 	shownummessage.clear();
 	final var mess=showmessage;
-		if(mess!=null) {
-			showindialog(mess,true);
+	if(mess!=null) {
+		showindialog(mess,true);
+	 	showsdialog=true;
 		}
 	if(!isWearable) {
+               if(SiBionics==1)  {
+			if(tocalendarapp) {
+				final String name=Natives.getUsedSensorName();
+				if(name!=null) {
+					ScanNfcV.calendar(this, 0, name);
+					tocalendarapp=false;
+					}
+				}
+			}
+		if(!showsdialog) {
+			if(tryHealth>0) {
+				if(Natives.gethealthConnect()&& Build.VERSION.SDK_INT >= 28) {
+						--tryHealth;
+						HealthConnection.Companion.init(this);
+					} 
+				else
+				   tryHealth = 0;
+				}
+			}
 		var am = (AccessibilityManager) getSystemService(ACCESSIBILITY_SERVICE);
 		List list;
 		if(am.isEnabled()&&am.isTouchExplorationEnabled()&&(list=am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_SPOKEN))!=null&&!list.isEmpty()) {
@@ -533,16 +591,29 @@ private void outofStorageSpace() {
    
    }
 private void makefilesfailed() {
- 	File files=getFilesDir();
-	String filespath=files.getAbsolutePath();
+File files=getFilesDir();
+String filespath=files.getAbsolutePath();
     String message= "Can't create directory:\n"+filespath+(files.isFile()?"\nA regular file with that name exists":"\nNot enough storage space?");
     Applic.argToaster(this,message,Toast.LENGTH_SHORT);
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
-    builder.setNegativeButton(R.string.ok, (dialog, id) -> { // User cancelled the dialog
+    Runnable end=()-> {
     	finish();	
 	keeprunning.stop();
 	System.exit(8);
-	}).setTitle("Juggluco has to exit").setMessage(message).show().setCanceledOnTouchOutside(false);
+	};
+    var dialog=builder.setNegativeButton(R.string.ok, (dial, id) -> {
+	end.run();
+    	// User cancelled the dialog
+	}).setTitle("Juggluco has to exit").setMessage(message).create();
+   dialog.setCanceledOnTouchOutside(false);
+   dialog.setOnShowListener(d->{
+   	Log.e(LOG_ID,"setOnShowListener");
+	if(files.isDirectory()||files.mkdirs()) {
+   	Log.e(LOG_ID,filespath+" accessable");
+	   System.exit(8);
+		}
+   		});
+	dialog.show();
    
    }
 
@@ -567,6 +638,8 @@ void activateresult(boolean res) {
 	if(!Applic.Nativesloaded)
 		return;
 
+	if(Natives.getfloatglucose( )&&Natives.gethidefloatinJuggluco())
+		Floating.makefloat();
 	Natives.setpaused(null);
         if (mNfcAdapter != null) {
 	   try {
@@ -723,24 +796,31 @@ public void requestRender() {
 
 private void netinitstep() {
 	if(!started) {
-		if (Build.VERSION.SDK_INT < 26||Build.VERSION.SDK_INT>30) {
+		if (Build.VERSION.SDK_INT < 26||Build.VERSION.SDK_INT>30||hasSibionics()) {
 			useBluetooth(Natives.getusebluetooth()&&finepermission());
 			}
 		else
 			useBluetooth(Natives.getusebluetooth());
 		started=true;
+		if(!isWearable) {
+			if(Natives.gethealthConnect()) {
+				 if(Build.VERSION.SDK_INT >= 28) {
+					HealthConnection.Companion.init(this);
+					}
+				}
+			}
 		}
-}
+	}
 private boolean gaverational=false;
 
 
 boolean finepermission() {
 	MainActivity act=this;
 	Log.i(LOG_ID,"finepermission");
-        if (Build.VERSION.SDK_INT >= 23) {
+  if(Build.VERSION.SDK_INT >= 23) {
 		var noperm=Applic.hasPermissions( act, scanpermissions);
 		if(noperm.length==0) {
-			return true;
+         return systemlocation() ;
 			}
 		for(var scanpermission:noperm) {
 			if(shouldShowRequestPermissionRationale(scanpermission)) {
@@ -807,6 +887,14 @@ static final int LOCATION_PERMISSION_REQUEST_CODE=0x942365;
 private static final int NOTIFICATION_PERMISSION_REQUEST_CODE=0x8878;
 
 //private final int STORAGE_PERMISSION_REQUEST_CODE=0x445533;
+private void hasLocationContinue() {
+      if(Natives.getusebluetooth())  {
+         if(Build.VERSION.SDK_INT <26||Build.VERSION.SDK_INT>30 ||hasSibionics()) 
+            useBluetooth(true);
+         else
+             SensorBluetooth.goscan();
+         }
+   }
 @Override
 public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
 	super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -819,6 +907,7 @@ public void onRequestPermissionsResult(int requestCode, String[] permissions, in
 			else {
 				Log.i(LOG_ID,"Required NO Notification permission");
 				}
+
 			explicit(this);	
 		 	};break;
 /*
@@ -834,17 +923,16 @@ public void onRequestPermissionsResult(int requestCode, String[] permissions, in
 		case LOCATION_PERMISSION_REQUEST_CODE:
 			Log.i(LOG_ID,"LOCATION_PERMISSION_REQUEST_CODE");
 			if (granted) {
-				if(Natives.getusebluetooth())  {
-					if(Build.VERSION.SDK_INT <26||Build.VERSION.SDK_INT>30 ) 
-						useBluetooth(true);
-					else
-					    SensorBluetooth.goscan();
-					    }
+            if(systemlocation())
+               hasLocationContinue();
 			} else {
 				Log.i(LOG_ID,"denied");
+				 setbluetoothmain(false);
+			     Applic.argToaster(this,"No permission. Sensor via Bluetooth turned off", Toast.LENGTH_LONG);
+
 				if(!gaverational) {
 					bluediag.returntoblue=false;
-					if(Build.VERSION.SDK_INT <26)  {
+					if(Build.VERSION.SDK_INT <26 ||hasSibionics() )  {
 						help.basehelp(R.string.locationpermission,
 								this, l -> {
 									useBluetooth(false);
@@ -864,7 +952,7 @@ public void onRequestPermissionsResult(int requestCode, String[] permissions, in
 				}
 			if(bluediag.returntoblue) {
 				bluediag.returntoblue=false;
-			        new bluediag(this); 
+			    new bluediag(this);
 				}
 			return;
 	}
@@ -877,6 +965,7 @@ static final String[] keys={"privkey.pem","fullchain.pem"};
 public static final int PRIVATE_REQUEST=0x80;
 public static final int CHAIN_REQUEST=0x81;
 private static  final int REQUEST_NOTIFICATION=0x50;
+static  final int REQUEST_BARCODE=0x10;
 public static final int REQUEST_EXPORT=0x70;
 //public static final int REQUEST_EXPORT=0x54e806d0;
 public static final int REQUEST_RINGTONE=0x60;
@@ -884,6 +973,7 @@ public static final int REQUEST_LIB=0x200;
 public static final int REQUEST_MASK=0xFFFFFF00;
 public static final int IGNORE_BATTERY_OPTIMIZATION_SETTINGS=0x100;
 static final int OVERLAY_PERMISSION_REQUEST_CODE=0x40;
+//static final private int REQUEST_CHECK_SETTINGS=0x20;
 //public static final int REQUEST_IGNORE_BATTERY_OPTIMIZATIONS=0x300;
 Openfile openfile=null;
 
@@ -924,6 +1014,21 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 	super.onActivityResult(requestCode, resultCode, data);
 	Log.format("Main.onActivityResult %x\n",requestCode);
 	switch(requestCode) {
+   /*
+         case REQUEST_CHECK_SETTINGS:
+             switch (resultCode) {
+                 case Activity.RESULT_OK:
+                     // All required changes were successfully made
+                     Log.i(LOG_ID,"REQUEST_CHECK_SETTINGS OK");
+                     hasLocationContinue();
+                     break;
+                 case Activity.RESULT_CANCELED:
+                     // The user was asked to change settings, but chose not to
+                     Log.i(LOG_ID,"REQUEST_CHECK_SETTINGS CANCELLED");
+                     Applic.Toaster("Location is turned off, can't scan for devices");
+                     break;
+                 default: break;
+             }; break; */
 		case OVERLAY_PERMISSION_REQUEST_CODE: {
 			Log.i(LOG_ID, "OVERLAY_PERMISSION_REQUEST_CODE ");
 			if(Floating.cannotoverlay()  ) {
@@ -945,22 +1050,33 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 			if (resultCode == Activity.RESULT_OK&&openfile!=null) 
 				openfile.getlib(data,this);
 		}; return;
-	      case PRIVATE_REQUEST:
+	   case PRIVATE_REQUEST:
 		case CHAIN_REQUEST:
-		if (resultCode == Activity.RESULT_OK) {
-			Uri uri; 
-			if(data==null||(uri= data.getData()) == null) { 
-				//TODO error
-				return;
-				}
-			try {
-				var input=new FileInputStream( getContentResolver().openFileDescriptor(uri, "r").getFileDescriptor());
-				savekey(input,keys[requestCode&~PRIVATE_REQUEST]);
-				}
-			 catch(Throwable th) {
-			 	Log.stack(LOG_ID,"openFileDescriptor",th);
-			 	}
-			}
+         if(!isWearable) {
+            if (resultCode == Activity.RESULT_OK) {
+               Uri uri; 
+               if(data==null||(uri= data.getData()) == null) { 
+                  //TODO error
+                  return;
+                  }
+               try {
+                  var input=new FileInputStream( getContentResolver().openFileDescriptor(uri, "r").getFileDescriptor());
+                  savekey(input,keys[requestCode&~PRIVATE_REQUEST]);
+                  }
+                catch(Throwable th) {
+                  Log.stack(LOG_ID,"openFileDescriptor",th);
+                  }
+               };
+            }
+         return;
+      case REQUEST_BARCODE: 
+         if(SiBionics==1 &&!isWearable) {
+		   if(Sibionics.zXingResult(resultCode, data))
+			finepermission();
+		    else 
+			systemlocation();
+		   return;
+		   }
 
 	};
 	if(!isWearable) {
@@ -1031,6 +1147,8 @@ protected void onActivityResult(int requestCode, int resultCode, Intent data) {
     }	
     else {
 	    if(keyCode== KeyEvent.KEYCODE_CAMERA) {
+	    	Log.i(LOG_ID,"keyCode== KeyEvent.KEYCODE_CAMERA)");
+
 			final int camkey=Natives.camerakey();
 			switch(camkey) {
 				case 0: Natives.setcamerakey(2);break;
@@ -1109,12 +1227,16 @@ boolean backinapp()  {
 		return doonback();
 		}
 	   }
+
 	@Override
 	public	void onBackPressed() {
-		Log.d(LOG_ID,"onBackPressed");
-		if(!backinapp())
-			  moveTaskToBack(true);
-	  }
+		Log.d(LOG_ID, "onBackPressed");
+		if(!backinapp())  {
+			Log.d(LOG_ID, "moveTaskToBack");
+	//		moveTaskToBack(true);
+			super.onBackPressed();
+			}
+	}
 void tonotaccesssettings() {
 	Log.i(LOG_ID,"tonotaccesssettings()");
 	try {
@@ -1170,8 +1292,8 @@ void showindialog(String message,boolean cancel) {
 	if(cancel) {
 		cancelglucosedialog();
 		}
-	 AlertDialog.Builder builder = new AlertDialog.Builder(cont);
-	 var dialog=builder.setNegativeButton(R.string.cancel, (dia, id) -> {
+	 final AlertDialog.Builder builder = new AlertDialog.Builder(cont);
+	 final var dialog=builder.setNegativeButton(R.string.cancel, (dia, id) -> {
 		if(cancel) {
 			shownglucosealert=null;
 			}
@@ -1181,6 +1303,17 @@ void showindialog(String message,boolean cancel) {
 			}
 	    }).setMessage(message).create();;
 	   dialog.setCanceledOnTouchOutside(false);
+	    dialog.setOnShowListener(a ->  {
+//	    	final var colres= android.R.color.holo_red_light;
+	    	final var colres= android.R.color.holo_orange_light;
+//	    	final var colres= android.R.color.holo_blue_bright;
+//	    	final var colres= android.R.color.holo_blue_light; //Very infrequently button not shown. Maybe this helps.
+		final var col=
+		   (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)?getResources().getColor(colres, getTheme()):
+    			getResources().getColor(colres);
+		  dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(col);
+		}	
+    		);
 	    dialog.show();
 
 	if(cancel) shownglucosealert=dialog;
@@ -1190,6 +1323,168 @@ call fineres=null;
 public void setfineres(call proc) {
 	fineres=proc;
 	}
+
+private static int getLocationMode(Context context) {
+       return Settings.Secure.getInt(context.getContentResolver(), Settings.Secure.LOCATION_MODE, Settings.Secure.LOCATION_MODE_OFF);
+   }
+public static boolean isLocationEnabled(Context context) {
+       return getLocationMode(context) != Settings.Secure.LOCATION_MODE_OFF;
+   }
+
+boolean systemlocation() {
+	if(Build.VERSION.SDK_INT > 30||Build.VERSION.SDK_INT < 23||!(hasSibionics()||Build.VERSION.SDK_INT<26))  {
+		return true;
+	}
+	Log.i(LOG_ID,"systemlocation()");
+   try {
+       if(!isLocationEnabled(this)) {
+            Log.i(LOG_ID,"Location not Enabled");
+            needsLocation();
+         }
+      else
+         Log.i(LOG_ID,"Location Enabled");
+      }catch (Throwable th) {
+         Log.stack(LOG_ID,"Settings.Secure.LOCATION_MODE",th);
+         }
+    return true;
+    }
+
+    /*
+private boolean systemlocation() {
+	if(Build.VERSION.SDK_INT > 30||Build.VERSION.SDK_INT < 23||!(hasSibionics()||Build.VERSION.SDK_INT<26))  {
+		return true;
+	}
+
+	Log.i(LOG_ID,"systemlocation()");
+try {
+	LocationManager locationManager =
+			(LocationManager) getSystemService(Context.LOCATION_SERVICE);
+	final boolean locationEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)||locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
+	if (!locationEnabled) {
+		Log.i(LOG_ID, "Location not enabled");
+		// Build an alert dialog here that requests that the user enable
+		// the location services, then when the user clicks the "OK" button,
+		enableLocationSettings();
+	} else
+		Log.i(LOG_ID, "Location enabled");
+}
+catch (Throwable th) {
+	Log.stack(LOG_ID,"LocationManager.isProviderEnabled",th);
+	}
+    return true;
+}
+*/
+private static void needsLocation() {
+	 MainActivity main=thisone;
+    if(main!=null) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(main);
+        builder.setTitle("Location").
+         setMessage("System Location needs to be turned on to find Bluetooth devices").
+           setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+            enableLocationSettings();
+            }
+   }).setOnCancelListener(l->enableLocationSettings()).show().setCanceledOnTouchOutside(false);
+         }
+     else {
+      Applic.Toaster("Turn on Location in System settings"); 
+       }
+   }
+
+private static void enableLocationSettings() {
+      MainActivity main=thisone;
+      if(thisone!=null) {
+            Log.i(LOG_ID,"ACTION_LOCATION_SOURCE_SETTINGS");
+             Intent settingsIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+             main.startActivity(settingsIntent);
+             }
+    }
+/* Doesn't work on a lot of phones and watches
+private boolean systemlocation() { 
+	 if(Build.VERSION.SDK_INT > 30||Build.VERSION.SDK_INT < 23||!(hasSibionics()||Build.VERSION.SDK_INT<26))  {
+         return true;
+         }
+   Log.i(LOG_ID,"systemlocation()");
+   try {
+   LocationRequest locr= new Builder(PRIORITY_HIGH_ACCURACY,10000).build(); //How else to ask for android location settings
+   LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder().addLocationRequest(locr);
+	builder.setNeedBle(true).setAlwaysShow(true);
+	Task<LocationSettingsResponse> task = LocationServices.getSettingsClient(this).checkLocationSettings(builder.build());
+     task.addOnCompleteListener(new OnCompleteListener<LocationSettingsResponse>() {
+     @Override
+     public void onComplete(Task<LocationSettingsResponse> task) {
+         try {
+             LocationSettingsResponse response = task.getResult(ApiException.class);
+             Log.i(LOG_ID,"settings are satisfied");
+             // All location settings are satisfied. The client can initialize location
+             // requests here.
+         } catch (ApiException exception) {
+	 Log.i(LOG_ID,"exception "+exception.toString());
+             switch (exception.getStatusCode()) {
+                 case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                     // Location settings are not satisfied. But could be fixed by showing the
+                     // user a dialog.
+                     try {
+                         // Cast to a resolvable exception.
+                         ResolvableApiException resolvable = (ResolvableApiException) exception;
+                         // Show the dialog by calling startResolutionForResult(),
+                         // and check the result in onActivityResult().
+
+                         resolvable.startResolutionForResult( MainActivity.this, REQUEST_CHECK_SETTINGS);
+			 Log.i(LOG_ID,"startResolutionForResult");
+                         return;
+                     } catch (IntentSender.SendIntentException e) {
+                         // Ignore the error.
+                     } catch (ClassCastException e) {
+                         // Ignore, should be an impossible error.
+                     }
+                     break;
+                 case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                     // Location settings are not satisfied. However, we have no way to fix the
+                     // settings so we won't show the dialog.
+                     Applic.Toaster("No location, don't know how to fix it");
+                     break;
+              }
+         }
+          hasLocationContinue();
+     }
+ });
+ return false;
+ }
+ catch (Throwable th) {
+   Log.stack(LOG_ID,"LocationSettingsRequest",th);
+   return true;
+      }
+
+      }
+*/
+
+/*
+   LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder();
+   SettingsClient client = LocationServices.getSettingsClient(this);
+   Task<LocationSettingsResponse> task = client.checkLocationSettings(builder.build());
+   task.addOnSuccessListener(this, new OnSuccessListener<LocationSettingsResponse>() {
+       @Override
+       public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
+       }
+   });
+task.addOnFailureListener(this, new OnFailureListener() {
+    @Override
+    public void onFailure(@NonNull Exception e) {
+        if (e instanceof ResolvableApiException) {
+            try {
+                // Show the dialog by calling startResolutionForResult(),
+                // and check the result in onActivityResult().
+                ResolvableApiException resolvable = (ResolvableApiException) e;
+                resolvable.startResolutionForResult(MainActivity.this, REQUEST_CHECK_SETTINGS);
+            } catch (IntentSender.SendIntentException sendEx) {
+            }
+        }
+    } });
+*/
+
 public void useBluetooth(boolean val) {
 	Applic.app.initbluetooth(val,this,true);
 	if(fineres!=null)
@@ -1197,7 +1492,15 @@ public void useBluetooth(boolean val) {
 	}
 
 public  void setbluetoothmain(boolean on) {
- 	Applic.setbluetooth(this, on) ;
+    if(on) {
+	 Natives.setusebluetooth(on);
+	 if(Build.VERSION.SDK_INT < 26||Build.VERSION.SDK_INT>30||hasSibionics()) {
+		if(!finepermission()) {
+			return;
+			}
+		}
+        }
+    Applic.setbluetooth(this, on) ;
 	if(fineres!=null)
 		fineres.call();
 	}

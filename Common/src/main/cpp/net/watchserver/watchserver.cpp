@@ -1,6 +1,3 @@
-#ifndef NOLOG
-#define SETVALUE 1
-#endif
 /*      This file is part of Juggluco, an Android app to receive and display         */
 /*      glucose values from Freestyle Libre 2 and 3 sensors.                         */
 /*                                                                                   */
@@ -25,6 +22,8 @@
 #ifndef WEAROS
 #include "settings/settings.h"
 #include <charconv>
+#include <inttypes.h>
+#include <system_error>
 //#include <arpa/inet.h>
        #include <sys/types.h>
        #include <sys/socket.h>
@@ -74,6 +73,11 @@ typedef std::conditional<sizeof(long long) == sizeof(int64_t), long long, int64_
 #endif
 extern jugglucotext engtext;
 
+constexpr const int maxnighterror=200;
+char nighterrorbuf[maxnighterror]="";
+#include "mirrorerror.h"
+#define nightprint(...) snprintf( nighterrorbuf,maxnighterror,__VA_ARGS__)
+#define nighterror(...) savebuferror(nighterrorbuf,maxnighterror,__VA_ARGS__)
 static void watchserverloop(int *sockptr,bool secure) ;
 static bool startwatchserver(bool secure,int port,int *sockptr) {
 	const char *servername=secure?"SSL WATCHSERVER":"WATCHSERVER";
@@ -88,12 +92,9 @@ static bool startwatchserver(bool secure,int port,int *sockptr) {
 	{
 	struct addrinfo *servinfo=nullptr;
 	destruct serv([&servinfo]{ if(servinfo)freeaddrinfo(servinfo);});
-	if(
-#ifndef NOLOG
-	int status=
-#endif
-	getaddrinfo(nullptr,watchserverport,&hints,&servinfo)) {
-		LOGGERWEB("getaddrinfo: %s\n",gai_strerror(status));
+	if(int status= getaddrinfo(nullptr,watchserverport,&hints,&servinfo)) {
+		nightprint("getaddrinfo: %s",gai_strerror(status));
+		LOGGERWEB("%s\n",nighterrorbuf);
 		return false;
 		}
 	for(struct addrinfo *ips=servinfo;;ips=ips->ai_next) {
@@ -102,18 +103,21 @@ static bool startwatchserver(bool secure,int port,int *sockptr) {
 			}
 		sock=socket(ips->ai_family,ips->ai_socktype,ips->ai_protocol);
 		if(sock==-1) {
-			lerror("socket");
+			nighterror("socket");
+			LOGGERWEB("%s\n",nighterrorbuf);
 			continue;
 			}
 		const int  yes=1;	
-		if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-			lerror("setsockopt");
+		if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+			nighterror("setsockopt");
+			LOGGERWEB("%s\n",nighterrorbuf);
 			close(sock);
 			return false;
 			}
 		if(bind(sock,ips->ai_addr,ips->ai_addrlen)==-1) {
-			lerror("bind");
+			nighterror("bind port=%d",port);
 			close(sock);
+			LOGGERWEB("%s\n",nighterrorbuf);
 			continue;
 			}
 		break;
@@ -121,11 +125,12 @@ static bool startwatchserver(bool secure,int port,int *sockptr) {
 	}
 	constexpr int const BACKLOG=5;
 	if (listen(sock, BACKLOG) == -1) {
+		nighterror("listen");
 		close(sock);
-		lerror("listen");
+		LOGGERWEB("%s\n",nighterrorbuf);
 		return false;
 		}
-
+	*nighterrorbuf='\0';
 	*sockptr=sock;
 	watchserverloop(sockptr,secure) ;
 	return true;
@@ -266,7 +271,10 @@ const bool localhostonly=!settings->data()->remotelyxdripserver&&!secure;
 				continue;
 				}
 		  }
+
 	      LOGGERWEB("%swatchserver: got connection from %s sock=%d\n" ,secure?"secure":"",namestr ,new_fd);
+	     void wakesender();
+	      wakesender();
 		void handlewatch(int sock) ;
 		try {
 #ifdef USE_SSL
@@ -330,10 +338,10 @@ void servererror(int sock) {
 
 
 
-static bool	 sgvinterpret(const char *start,int len,bool headonly, bool gmt,recdata *data,bool all=true) ;
+static bool	 sgvinterpret(const char *start,int len,bool headonly, bool gmt,std::string_view origin,recdata *data,bool all=true) ;
 
 
-static bool givetreatments(const char *args,int argslen, recdata *data) ;
+static bool givetreatments(const char *args,int argslen, std::string_view origin,recdata *data) ;
 
 
 static bool sendall(int sock ,const char *buf,int buflen) {
@@ -377,8 +385,8 @@ static bool plainwatchcommands(int sock) {
 	return res&&res2&&!stopconnection;
 	}
 
-void mktypeheader(char *outstart,char *outiter,const bool headonly,recdata *outdata,std::string_view type) ;
- void mkjsonheader(char *outstart,char *outiter,const bool headonly,recdata *outdata) ;
+void mktypeheader(char *outstart,char *outiter,const bool headonly,recdata *outdata,std::string_view type,std::string_view origin) ;
+ void mkjsonheader(char *outstart,char *outiter,const bool headonly,recdata *outdata,std::string_view origin) ;
 static bool givestatushtml(recdata *outdata) {
 //static	constexpr const char status[]="HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 19\r\n\r\n<h1>STATUS OK</h1>\n";
 //static	constexpr const char status[]="HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 19\r\n\r\n<h1>STATUS OK</h1>";
@@ -407,7 +415,7 @@ stmbuf.tm_hour,stmbuf.tm_mday,stmbuf.tm_sec);
 static bool outofmemory(recdata *outdata) {
 
 //	const char notfoundtxt[]="HTTP/1.0 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: ";
-static	constexpr const char status[]="HTTP/1.1 413 Content Too Large\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 30\r\n\r\n<h1>Server out of memory</h1>\n";
+static	constexpr const char status[]="HTTP/1.1 413 Content Too Large\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: 30\r\n\r\n<h1>Server out of memory</h1>\n";
 	const int statuslen=sizeof(status)-1;
 	outdata->allbuf=nullptr;
 	outdata->start=status;
@@ -471,17 +479,128 @@ static bool mkauth(auth_t &authbuf) {
 		}
 	return true;
 	}
+/*
+struct Authority_type{
+	int iter;
+	auth_t auth[100];
+	}; */
+//Mmap<Authority_type>
 
-static std::map<auth_t,uint32_t> authority;
-
-
-static std::mutex authmutex;
 constexpr const int expirelater=4*60*60; 
+#define SAVEAUTH
+#ifdef SAVEAUTH
+class {
+
+/*typedef std::array<char,179> auth_t;
+struct authpair {
+	auth_t auth;
+	uint32_t expires;
+	}; */
+
+auto &end() {
+	return settings->data()->authend;
+	}
+auto &start() {
+	return settings->data()->authstart;
+	}
+auto end() const {
+	return settings->data()->authend;
+	}
+auto start() const {
+	return settings->data()->authstart;
+	}
+authpair *data() {
+	return settings->data()->authdata;
+	}
+
+public:
+void insert(const auth_t &au,uint32_t expire) {
+	data()[end()++%AUTHMAX]={au,expire};
+	LOGGER("insert(%.*s) at %d\n",(int)au.size(),au.data(),end()-1);
+	};
+void	erase_expired(uint32_t expiredtime) {
+	const authpair *dat=data();	
+	int en=end();
+	for(int it=start();it<en;++it) {
+		if(dat[it%AUTHMAX].expires>expiredtime) {
+			LOGGER("erase_expired oldstart=%d newstart=%d end=%d\n",start(),it,en);
+			start()=it;
+			return;
+			}
+		}	
+	end()=start()=0;
+	LOGGER("erase_expired nothing left  end=%d\n",en);
+	};
+size_t size() const {
+	return end()-start();
+	};
+bool find(const auth_t *authori)  {
+	LOGGER("Authority find: %.*s\n",(int)authori->size(), authori->data());
+	authpair *dat=data();	
+	int en=end();
+	int st=start();
+	for(int it=en-1;it>=st;--it) {
+		const authpair &au=dat[it%AUTHMAX];
+		if(!memcmp(au.auth.data(),authori->data(),authori->size())) {
+			if((au.expires+expirelater)<time(nullptr)){
+				LOGGER("%d Authority expired: %.*s\n",it, (int)au.auth.size(), au.auth.data());
+				start()=it+1;
+				return false;
+				}
+			LOGGER("%d Authority found: %.*s\n",it,(int)au.auth.size(), au.auth.data());
+			return true;
+			}	
+		else {
+			LOGGER("%d Authority not: %.*s\n",it,(int)au.auth.size(), au.auth.data());
+			}
+		}
+	LOGAR("Autority no one");
+	return false;
+	};
+	} authority;
+#else
+class {
+	typedef std::map<auth_t,uint32_t>  authmap_t;
+	authmap_t authmap;
+public:
+void insert(const auth_t &au,uint32_t expire) {
+	authmap.insert({au,expire});
+	};
+void	erase_expired(uint32_t expiredtime) {
+	std::erase_if(authmap, [expiredtime](const auto& auth){ return auth.second < expiredtime; });
+	};
+size_t size() const {
+	return authmap.size();
+	};
+auto end() const {
+	return authmap.end();
+	}
+bool find(const auth_t *authori) {
+	if(const auto hit=authmap.find(*authori);hit!=authmap.end()) {
+		if((hit->second+expirelater)>=time(nullptr)){
+			return true;
+			}
+		LOGGER("expired %u\n",hit->second);
+		authmap.erase(hit);
+		}
+	else {
+	#ifndef NOLOG
+		LOGGER("Authority not found: %.*s\n",(int)authori->size(), authori->data());
+		for(auto [el,_ex]:authmap) {
+			LOGGER("not: %.*s\n",(int)el.size(), el.data());
+			}
+	#endif
+		}
+	return false;
+	};
+	} authority;
+#endif
+static std::mutex authmutex;
 /*Disadvantage: more tokens
 Advantage: gets new token earlier in case Juggluco restarted. Juggluco doesn't save tokens
 */
 
-static bool authorization(recdata *outdata) {
+static bool authorization(bool hassecret,std::string_view origin,recdata *outdata) {
    	outdata->allbuf=new(std::nothrow) char[512+400];
 	if(!outdata->allbuf) {
 		return outofmemory(outdata);
@@ -498,15 +617,15 @@ static bool authorization(recdata *outdata) {
    		outdata->allbuf=nullptr;
 		return giveservererror(outdata);
 		}
-	{
-	std::lock_guard<std::mutex> lck(authmutex);
-	std::erase_if(authority, [expiredtime=now-expirelater](const auto& auth){ return auth.second < expiredtime; });
-	authority.insert({au,expire});
-	};
+	if(hassecret) {
+		std::lock_guard<std::mutex> lck(authmutex);
+		authority.erase_expired(now-expirelater);
+		authority.insert(au,expire);
+		};
 	addstrview(outiter,au);
 	addar(outiter,R"(","sub":"Juggluco","permissionGroups":[["*:*:read"],["*:*:read"]],"iat":)");
 	outiter+=sprintf(outiter,R"(%u,"exp":%u})",now,expire);
-	mkjsonheader(start,outiter,false,outdata); 
+	mkjsonheader(start,outiter,false,outdata,origin); 
 	return true;
 	}
 
@@ -514,24 +633,17 @@ static bool isauthorized(const auth_t *authori) {
 	if(!authori)
 		return false;
 	std::lock_guard<std::mutex> lck(authmutex);
-	if(!authority.size())
+	if(!authority.size()) {
+		LOGAR("Authority empty");
 		return false;
-	if(const auto hit=authority.find(*authori);hit==authority.end())
-		return false;
-	else  {
-		if((hit->second+expirelater)<(time(nullptr))) {
-			LOGGER("expired %u\n",hit->second);
-			authority.erase(hit);
-			return false;
-			}
-		return true;
 		}
+	return authority.find(authori);
 	}
 static bool givesite(recdata *outdata,std::string_view hostname,bool secure) {
 if(hostname.data()==nullptr) {
 	hostname="localhost";
 	}
-static	constexpr const char webpage1[]="HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ";
+static	constexpr const char webpage1[]="HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: ";
 static	constexpr const char webpage2[]="\r\n\r\n"; 
 static	constexpr const char webpage3[]=R"(<!DOCTYPE html>
 <html>
@@ -571,7 +683,7 @@ int totlen=weblen+sizeof(webpage1)+sizeof(webpage2)+5;
 }
 
 //{"settings":{"units":"mmol","thresholds":{"bgHigh":169,"bgLow":70}}}
-static bool givedripstatus(recdata *outdata) {
+static bool givedripstatus(std::string_view origin,recdata *outdata) {
 	constexpr const char format[]= R"({"settings":{"units":"%s","thresholds":{"bgHigh":%.0f,"bgLow":%.0f}}})";
 	constexpr const int len=sizeof(format)+6+2*12;
 	outdata->allbuf=new(std::nothrow) char[len+512];
@@ -582,7 +694,7 @@ static bool givedripstatus(recdata *outdata) {
 	auto halarm=gconvert(settings->data()->ahigh,2);
 	auto lowalarm=gconvert(settings->data()->alow,2);
 	int alllen=snprintf(start,len,format, settings->getunitlabel().data(),halarm,lowalarm);
-	mkjsonheader(start,start+alllen,false,outdata); 
+	mkjsonheader(start,start+alllen,false,outdata,origin); 
 	return true;
 	}
 
@@ -595,7 +707,7 @@ static bool givestatusv3right(recdata *outdata) {
 		}
         char *start=outdata->allbuf+152;
 	int alllen=snprintf(start,len,statusv3, time(nullptr));
-	mkjsonheader(start,start+alllen,false,outdata); 
+	mkjsonheader(start,start+alllen,false,outdata,"*"); 
 	return true;
 
 	}
@@ -625,7 +737,7 @@ static bool givestatusv3(recdata *outdata) {
 {"status":200,"result":[{"sgv":123,"direction":"Flat","srvCreated":1701290313000},{"sgv":120,"direction":"Flat","srvCreated":1701290308000},{"sgv":125,"direction":"Flat","srvCreated":1701290253000},{"sgv":121,"direction":"Flat","srvCreated":1701290246000},{"sgv":127,"direction":"Flat","srvCreated":1701290193000},{"sgv":121,"direction":"Flat","srvCreated":1701290186000}]}
 */
 
-static bool givenightstatus(recdata *outdata) {
+static bool givenightstatus(std::string_view origin,recdata *outdata) {
 	constexpr static
 	#include "status.h"
 	auto tim=time(nullptr);
@@ -644,7 +756,7 @@ static bool givenightstatus(recdata *outdata) {
 	auto lowalarm=gconvert(settings->data()->alow,2);
 	const char *unitlabel=settings->getunitlabel().data();
 	int alllen=snprintf(start,len,statusformat,tmbuf.tm_year+1900,tmbuf.tm_mon+1,tmbuf.tm_mday, tmbuf.tm_hour, tmbuf.tm_min,tmbuf.tm_sec,0,tim*1000LL,unitlabel,halarm,thigh,tlow,lowalarm);
-	mkjsonheader(start,start+alllen,false,outdata); 
+	mkjsonheader(start,start+alllen,false,outdata,origin); 
 	return true;
 	}
 /*
@@ -691,7 +803,7 @@ bool givenolist(recdata *outdata) {
 		}
 	char *start=outdata->allbuf+152;
 	memcpy(start,nothing.data(),nothing.size());
-	mkjsonheader(start,start+nothing.size(),false,outdata);
+	mkjsonheader(start,start+nothing.size(),false,outdata,"*");
 	return true;
 }
 bool givenothing(recdata *outdata) {
@@ -703,7 +815,7 @@ bool givenothing(recdata *outdata) {
 		}
 	char *start=outdata->allbuf+152;
 	memcpy(start,nothing.data(),nothing.size());
-	mkjsonheader(start,start+nothing.size(),false,outdata);
+	mkjsonheader(start,start+nothing.size(),false,outdata,"*");
 	return true;
 }
 
@@ -727,8 +839,8 @@ static bool showdevicestatus(recdata *outdata) { //seems to be used for battery 
 	return givenothing(outdata);
 	} */
 
-static bool	 currentjson(recdata *outdata);
-static bool givecurrent(recdata *outdata) {
+static bool	 currentjson(std::string_view orign,recdata *outdata);
+static bool givecurrent(std::string_view origin,recdata *outdata) {
 	int sensorid=sensors->last();
 	const SensorGlucoseData *sens=getStreamSensor(sensorid);;
 	const std::span<const ScanData> gdata=sens->getPolldata();
@@ -740,13 +852,14 @@ static bool givecurrent(recdata *outdata) {
 		}
 	const ScanData *value=iter;;
 //static	constexpr const char header[]="HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ";
-static	constexpr const char header[]="HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ";
-	constexpr const int headerlen=sizeof(header)-1;
-   	outdata->allbuf=new(std::nothrow) char[sizeof(header)+1024];
+//static	constexpr const char header[]="HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ";
+//	constexpr const int headerlen=sizeof(header)-1;
+   	outdata->allbuf=new(std::nothrow) char[300+1024];
 	if(!outdata->allbuf)
 		return outofmemory(outdata);
     char *start=outdata->allbuf+152,*outiter=start;
     	outiter=textitem(outiter,value)-2;
+/*
 	long long len=outiter-start;
 	char lenstr[20];
 	int lenlen=snprintf(lenstr,20,"%lld\r\n\r\n",len);
@@ -757,6 +870,10 @@ static	constexpr const char header[]="HTTP/1.1 200 OK\r\nContent-Type: text/plai
 	startheader+=lenlen;
 	outdata->len=outiter-outdata->start;
 	LOGGERN(outdata->start,outdata->len);
+ */
+
+	constexpr const std::string_view plain=R"(text/plain; charset=utf-8)";
+	mktypeheader(start,outiter,false,outdata,plain,origin) ;
 	return true;
 	}
 //https:///api/v1/entries/sgv.txt?count=24&find[date][$gte]=1676554219000&find[date][$lt]=1676561418000
@@ -790,14 +907,15 @@ int formattime(char *buf, time_t tim) {
 	auto monthlabel=engtext.monthlabel;
 	return sprintf(buf,"%s, %02d %s %d %02d:%02d:%02d GMT", daylabel[tmbuf.tm_wday], tmbuf.tm_mday,monthlabel[tmbuf.tm_mon] ,tmbuf.tm_year+1900, tmbuf.tm_hour, tmbuf.tm_min,tmbuf.tm_sec);
 	}
-bool givesgvtxt(const char *input,int inlen,recdata *outdata,char sep=9);
-bool givesgvtxt(int nr,int interval,uint32_t lowerend,uint32_t higherend,recdata *outdata,char sep=9) {
+bool givesgvtxt(const char *input,int inlen,std::string_view origin,recdata *outdata,char sep=9);
+bool givesgvtxt(int nr,int interval,uint32_t lowerend,uint32_t higherend,std::string_view origin,recdata *outdata,char sep=9) {
+
 //	static	constexpr const char header[]="HTTP/1.1 200 OK\r\nExpect-Ct: max-age=0\r\nAccess-Control-Allow-Origin: *\r\nVary: Accept, Accept-Encoding\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ";
 //	static	constexpr const char header[]="HTTP/1.1 200 OK\r\nExpect-Ct: max-age=0\r\nStrict-Transport-Security: max-age=31536000\r\nServer: Cowboy\r\nConnection: keep-alive\r\nX-Dns-Prefetch-Control: off\r\nX-Download-Options: noopen\r\nX-Content-Type-Options: nosniff\r\nX-Permitted-Cross-Domain-Policies: none\r\nReferrer-Policy: no-referrer\r\nX-Xss-Protection: 0\r\nX-Powered-By: Express\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ";
-	static	constexpr const char header[]="HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ";
+//	static	constexpr const char header[]="HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: ";
 //	static	constexpr const char header[]="HTTP/1.1 200 OK\r\nContent-Type: text/csv; charset=utf-8\r\nContent-Length: ";
 //	text/csv; charset=utf-8
-	constexpr const int headerlen=sizeof(header)-1;
+	constexpr const int headerlen=200;
 	 const int bufsize= headerlen+1+100*nr+100;
    	outdata->allbuf=new(std::nothrow) char[bufsize];
 	if(outdata->allbuf==nullptr) {
@@ -813,6 +931,10 @@ bool givesgvtxt(int nr,int interval,uint32_t lowerend,uint32_t higherend,recdata
 		 outdata->allbuf=nullptr;
 		return givenothing(outdata);
 	};
+
+	constexpr const std::string_view plain=R"(text/plain; charset=utf-8)";
+	mktypeheader(start,outiter,false,outdata,plain,origin);
+	/*
 	outiter-=2;
 	long long len=outiter-start;
 	char lenstr[30];
@@ -826,7 +948,7 @@ bool givesgvtxt(int nr,int interval,uint32_t lowerend,uint32_t higherend,recdata
 	memcpy(startheader,lenstr,lenlen);
 	startheader+=lenlen;
 	outdata->len=outiter-outdata->start;
-//	LOGGERN(outdata->start,outdata->len);
+//	LOGGERN(outdata->start,outdata->len); */
 	return true;
 }
 extern int getdeltaindex(float rate);
@@ -903,7 +1025,7 @@ static bool getv2auth(recdata *outdata) {
 	mkjsonheader(start,start+alllen,false,outdata); 
 	return true;
 	} */
-static bool getv3modified(recdata *outdata) {
+static bool getv3modified(std::string_view origin,recdata *outdata) {
 	uint32_t now=time(nullptr);
 	auto lastentries= sensors->timelastdata();
 	auto lastnum=settings->data()->timenumchanged;
@@ -920,11 +1042,11 @@ static bool getv3modified(recdata *outdata) {
 //	auto alllen=sprintf(start,lastModified,now,lastentries,lastprofile,lastnum);
 	uint32_t lastdevicestatus=1546297200;
 	auto alllen=sprintf(start,lastModified,now,lastdevicestatus,lastentries,lastnum);
-	mkjsonheader(start,start+alllen,false,outdata); 
+	mkjsonheader(start,start+alllen,false,outdata,origin); 
 	return true;
 	}
 static bool nothingV3(recdata *outdata) {
-static	constexpr const char status[]="HTTP/1.1 200\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 26\r\n\r\n" R"({"status":200,"result":[]})";
+static	constexpr const char status[]="HTTP/1.1 200\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 26\r\n\r\n" R"({"status":200,"result":[]})";
 
 	const int statuslen=sizeof(status)-1;
 	outdata->allbuf=nullptr;
@@ -939,7 +1061,7 @@ static bool getv3food(recdata *outdata) {
 extern char *nightexport(char *buffer,uint32_t starttime,uint32_t endtime,int maxcount,uint32_t &last);
 
 char * writev3entry(char *outin,const ScanData *val, const sensorname_t *sensorname,bool server=true);
-static bool getv3entries(const char *cmdstart,const char *cmdend,recdata *outdata) ;
+static bool getv3entries(const char *cmdstart,const char *cmdend,std::string_view origin,recdata *outdata) ;
 
 char *getdeltastr(char *start) {
 	char *outiter=start;
@@ -1000,7 +1122,7 @@ static char * givebgnow(char *start) {
 	}
 
 
-bool giveproperties(const char *input,int inputlen,recdata *outdata) {
+bool giveproperties(const char *input,int inputlen,std::string_view origin,recdata *outdata) {
 	LOGGERWEB("giveproperties(%s,%d,recdata *outdata) \n",input,inputlen);
 //	const char *end=input+inputlen;
  	if(*input++=='/') {
@@ -1043,7 +1165,7 @@ bool giveproperties(const char *input,int inputlen,recdata *outdata) {
 				if (outiter != (start + 1))
 					--outiter;
 				*outiter++ = '}';
-				mkjsonheader(start, outiter, false, outdata);
+				mkjsonheader(start, outiter, false, outdata,origin);
 				return true;
 			}
 			++input;
@@ -1061,7 +1183,7 @@ bool giveproperties(const char *input,int inputlen,recdata *outdata) {
 //		outiter = givecage(outiter);
 		--outiter;
 		*outiter++ = '}';
-		mkjsonheader(start, outiter, false, outdata);
+		mkjsonheader(start, outiter, false, outdata,origin);
 		return true;
 		}
     //return givenothing(outdata);
@@ -1098,8 +1220,9 @@ bool givestrange(const char *input,int inputlen,recdata *outdata) {
     //       char *start=outdata->allbuf+152;
     return true;
     } */
+ 
 static void nosecret(std::string_view secret, recdata *outdata) {
-	constexpr const char nosecrettxt[]="HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\nsecret_api wrong: %.*s\n";
+	constexpr const char nosecrettxt[]="HTTP/1.1 403 Forbidden\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain\r\nContent-Length: %d\r\n\r\nsecret_api wrong: %.*s\n";
 	constexpr const int formatlen=sizeof(nosecrettxt)-1;
 	const int buflen=formatlen+secret.size()+20;
 	char *nosecret=outdata->allbuf=new char[buflen];
@@ -1109,7 +1232,7 @@ static void nosecret(std::string_view secret, recdata *outdata) {
 	}
 
 void wrongpath(std::string_view toget, recdata *outdata);
-static bool apiv1(const char *input,int leftlen,bool behead,bool json,recdata *outdata) {
+static bool apiv1(const char *input,int leftlen,bool behead,bool json,bool hassecret,std::string_view origin,recdata *outdata) {
 		const char *posptr=input;
 		std::string_view api="entries";
 		if(!memcmp(api.data(),posptr,api.size())) {
@@ -1117,12 +1240,12 @@ static bool apiv1(const char *input,int leftlen,bool behead,bool json,recdata *o
 			leftlen-=api.size();
 			std::string_view sgvjson="/sgv.json";
 			if(!memcmp(sgvjson.data(),posptr,sgvjson.size())) {
-				return sgvinterpret(posptr+sgvjson.size(),leftlen-sgvjson.size(),behead,true,outdata);
+				return sgvinterpret(posptr+sgvjson.size(),leftlen-sgvjson.size(),behead,true,origin,outdata);
 				}
 			else {
 				std::string_view api2=".json";
 				if(!memcmp(api2.data(),posptr,api2.size())) {
-					return sgvinterpret(posptr+api2.size(),leftlen-api2.size(),behead,true,outdata);
+					return sgvinterpret(posptr+api2.size(),leftlen-api2.size(),behead,true,origin,outdata);
 					}
 				else {
 					const constexpr std::string_view api2="/sgv";
@@ -1133,17 +1256,17 @@ static bool apiv1(const char *input,int leftlen,bool behead,bool json,recdata *o
 						{const constexpr std::string_view ext1=".txt";
 						const constexpr std::string_view ext2=".tsv";
 						 if(!memcmp(ext1.data(),posptr,ext1.size())||!memcmp(ext2.data(),posptr,ext2.size())) 
-							return givesgvtxt(posptr+ext1.size(),leftlen-ext1.size(),outdata,9);
+							return givesgvtxt(posptr+ext1.size(),leftlen-ext1.size(),origin,outdata,9);
 						 }
 						const constexpr std::string_view ext1=".csv";
 						 if(!memcmp(ext1.data(),posptr,ext1.size())) 
-							return givesgvtxt(posptr+ext1.size(),leftlen-ext1.size(),outdata,',');
+							return givesgvtxt(posptr+ext1.size(),leftlen-ext1.size(),origin,outdata,',');
 
 						if(*posptr==' '||*posptr=='?') {
 							if(json)
-								return sgvinterpret(posptr,leftlen,false,true,outdata);
+								return sgvinterpret(posptr,leftlen,false,true,origin,outdata);
 							else
-								return givesgvtxt(posptr,leftlen,outdata,9);
+								return givesgvtxt(posptr,leftlen,origin,outdata,9);
 							}
 
 
@@ -1151,9 +1274,9 @@ static bool apiv1(const char *input,int leftlen,bool behead,bool json,recdata *o
 					else  {
 						if(*posptr==' '||*posptr=='?') {
 							if(json)
-								return sgvinterpret(posptr,leftlen,false,true,outdata);
+								return sgvinterpret(posptr,leftlen,false,true,origin,outdata);
 							else
-								return givesgvtxt(posptr,leftlen,outdata,9);
+								return givesgvtxt(posptr,leftlen,origin,outdata,9);
 							}
 						else {
 							std::string_view current="/current";
@@ -1162,9 +1285,9 @@ static bool apiv1(const char *input,int leftlen,bool behead,bool json,recdata *o
 								posptr+=cursize;
 								std::string_view json2=".json";
 								if(!memcmp(json2.data(),posptr,json2.size())) 
-									return currentjson(outdata);
+									return currentjson(origin,outdata);
 								else 
-									return givecurrent(outdata);
+									return givecurrent(origin,outdata);
 								}
 							else {
 
@@ -1184,13 +1307,13 @@ static bool apiv1(const char *input,int leftlen,bool behead,bool json,recdata *o
 			return givestatushtml(outdata);
 		else {
 //			if(gzip) return gzipnightstatus(outdata);
-			return givenightstatus(outdata);
+			return givenightstatus(origin,outdata);
 			}
 		}
 	std::string_view treatments="treatments";
 	const auto treatsize= treatments.size();
 		if(!memcmp(treatments.data(),posptr,treatsize)) {
-			return givetreatments(posptr+treatsize,leftlen-treatsize,outdata);
+			return givetreatments(posptr+treatsize,leftlen-treatsize,origin,outdata);
 			}
 /*
 	constexpr const std::string_view devicestatus="devicestatus.json";
@@ -1201,13 +1324,13 @@ static bool apiv1(const char *input,int leftlen,bool behead,bool json,recdata *o
 std::string_view properties="properties";
 const auto propsize= properties.size();
 	if(!memcmp(properties.data(),input,propsize)) {
-		return giveproperties(input+propsize,leftlen-propsize,outdata);
+		return giveproperties(input+propsize,leftlen-propsize,origin,outdata);
 		}
 
 std::string_view authv2=R"(authorization/request/)";
 const auto authv2size= authv2.size();
 	if(!memcmp(authv2.data(),input,authv2size)) {
-		return authorization(outdata);
+		return authorization(hassecret,origin,outdata);
 		}
 
 
@@ -1216,12 +1339,12 @@ const auto authv2size= authv2.size();
 	return true;
  	}
 
-static bool apiv3(const char *input,const char *inpend,recdata *outdata) ;
+static bool apiv3(const char *input,const char *inpend,std::string_view origin,recdata *outdata) ;
 
-static bool		 getv3treatments(const char *input,int inputlen,recdata *outdata,uint32_t modifiedafter=0);
+static bool		 getv3treatments(const char *input,int inputlen,std::string_view origin,recdata *outdata,uint32_t modifiedafter=0);
 
-static bool treatmenthistoryV3(const char *start,const char *ends,recdata *outdata) ;
-static bool apiv3(const char *input,const char *inpend,recdata *outdata) {
+static bool treatmenthistoryV3(const char *start,const char *ends,std::string_view origin,recdata *outdata) ;
+static bool apiv3(const char *input,const char *inpend,std::string_view origin,recdata *outdata) {
 std::string_view statusv3="status";
 const auto stav3size= statusv3.size();
 	if(!memcmp(statusv3.data(),input,stav3size)) {
@@ -1231,7 +1354,7 @@ std::string_view entriesv3="entries";
 const auto entries3size= entriesv3.size();
 	if(!memcmp(entriesv3.data(),input,entries3size)) {
 		const char *start=input+entries3size;
-		return getv3entries(start,inpend,outdata);
+		return getv3entries(start,inpend,origin,outdata);
 		}
 std::string_view treatmentsv3="treatments";
 const auto treatments3size= treatmentsv3.size();
@@ -1241,12 +1364,12 @@ const auto treatments3size= treatmentsv3.size();
 		std::string_view history="/history/";
 		if(!memcmp(start,history.data(),history.size()))  {
 			start+=history.size();
-			return treatmenthistoryV3(start,inpend,outdata);
+			return treatmenthistoryV3(start,inpend,origin,outdata);
 			}
 		std::string_view jsonstr=".json";
 		if(!memcmp(start,jsonstr.data(),jsonstr.size())) 
 			start+=jsonstr.size();
-		return getv3treatments( start,inpend-start, outdata,0);
+		return getv3treatments( start,inpend-start, origin,outdata,0);
 		}
 std::string_view foodv3=R"(food)";
 const auto food3size= foodv3.size();
@@ -1263,12 +1386,12 @@ const auto devicestatus3size= devicestatusv3.size();
 std::string_view modifiedv3="lastModified";
 const auto modified3size= modifiedv3.size();
 	if(!memcmp(modifiedv3.data(),input,modified3size)) {
-		return getv3modified(outdata);
+		return getv3modified(origin,outdata);
 		}
 
 
 	wrongpath({input,static_cast<size_t>(inpend-input)}, outdata);
-	return true;
+	return false;
 	}
 static bool setitertrue(const char *&iter,std::string_view cond) {
 	if(strncasecmp(iter,cond.data(),cond.size()))
@@ -1442,7 +1565,7 @@ Getopts(const char *posptr,int size) {
 typedef		std::span<char> (*getdata_t)(int startpos, int len, uint32_t starttime, uint32_t endtime,bool,int,int);
 
 std::string_view jugglucocommand="x/";
-static bool jugglucos(const char * const input,int size, recdata *outdata) {
+static bool jugglucos(const char * const input,int size, std::string_view origin,recdata *outdata) {
 	const char *posptr=input;
 	constexpr const std::string_view types[]={"history","stream","scans","amounts","meals"};
 	 constexpr const getdata_t procs[]={gethistory,getstream,getscans,getamounts,getmeals};
@@ -1464,7 +1587,7 @@ static bool jugglucos(const char * const input,int size, recdata *outdata) {
 				const std::string_view plain="text/plain; charset=utf-8";
 				const std::string_view html="text/html; charset=utf-8";
 				outdata->allbuf=res.data();
-				mktypeheader(res.data()+startpos,res.data()+res.size(),false,outdata,i==4?html:plain);
+				mktypeheader(res.data()+startpos,res.data()+res.size(),false,outdata,i==4?html:plain,origin);
 				return true;
 				}
 			else {
@@ -1480,7 +1603,7 @@ static bool jugglucos(const char * const input,int size, recdata *outdata) {
 	}
 
 
-static bool		 pebbleinterpret(const char *input,int inputlen,recdata *outdata);
+static bool		 pebbleinterpret(const char *input,int inputlen,std::string_view origin,recdata *outdata);
 
 bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 	LOGGERWEB("watchcommands len=%d %.*s",len,len,rbuf);
@@ -1499,7 +1622,7 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 	const int reheadlen=sizeof(rehead)-1;
 	const char api_secret[]= "api_secret: ";
 	const int	api_len=sizeof(api_secret)-1;
-	std::string_view hostname;
+	std::string_view hostname,origin;
 	const auth_t *authori=nullptr;
 	while((nl= std::find(start,ends,'\n'))!=ends) {
 		if(!memcmp(start,reget,regetlen)) {
@@ -1549,6 +1672,15 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 								}
 							}
 						else  */{
+						constexpr const char originnamestr[]="Origin: ";
+						constexpr const int originnamelen= sizeof(originnamestr)-1;
+						if(!memcmp(start,originnamestr,originnamelen)) {
+							const char *name=start+originnamelen;
+							origin={name,static_cast<size_t>(nl-name-(nl[-1]==0x0D?1:0))};
+							LOGGER("Origin=%.*s\n",origin.size(),origin.data());
+							}
+						else
+						    {
 							constexpr const char hostnamestr[]="Host: ";
 							constexpr const int hostnamelen= sizeof(hostnamestr)-1;
 							if(!memcmp(start,hostnamestr,hostnamelen)) {
@@ -1567,6 +1699,7 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 									}
 								}
 							}
+						     }
 						}
 					}
 				}
@@ -1576,7 +1709,7 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 			break;
 		}
 	
-
+	LOGAR("After while");
 	if(!toget.data()) {
 		return givenothing(outdata);
 		return false;
@@ -1611,7 +1744,7 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 				if(!memcmp(request.data(),starttoget,request.size())) {
 					starttoget+=request.size();
 					if(!memcmp(starttoget,settings->data()->apisecret,seclen)) {
-						return authorization(outdata);
+						return authorization(true,origin,outdata);
 						}
 					}
 				if(!isauthorized(authori)) {
@@ -1619,6 +1752,15 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 						givesite(outdata,hostname,secure);
 						return true;
 						}
+
+					time_t tim=time(nullptr);
+        				struct tm stm;
+		 			localtime_r(&tim, &stm);
+
+					int it=snprintf( nighterrorbuf,maxnighterror,R"(%02d:%02d %02d:%02d: Wrong secret)",stm.tm_mday,stm.tm_mon+1,stm.tm_hour,stm.tm_min);
+					if(!issha1)
+						snprintf( nighterrorbuf+it,maxnighterror-it,R"( "%.*s")",(int)foundsecret.size(),foundsecret.data());
+
 					nosecret(foundsecret, outdata) ;
 					return false;
 					}
@@ -1629,7 +1771,7 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 			}
 		else {
 			int newstart=seclen+1;
-			if(newstart>=toget.size()||toget.data()[seclen]==' ') {
+			if(newstart>=toget.size()||toget.data()[seclen]==' '||((toget.data()[seclen+1]==' ')&&toget.data()[seclen]=='/')) {
 				pathconcat  name(hostname,std::string_view(starttoget,seclen));
 				givesite(outdata,name,secure);
 				return true;
@@ -1644,7 +1786,7 @@ bool watchcommands(char *rbuf,int len,recdata *outdata,bool secure) {
 	LOGGERWEB("toget=%.*s\n",(int)toget.size(),toget.data()); //to set getargs in the beginning and use everywhere
 std::string_view sgv="sgv.json";
 	if(!memcmp(sgv.data(),toget.data(),sgv.size())) {
-		return sgvinterpret(toget.data()+sgv.size(),toget.size()-sgv.size(),behead,false,outdata,false);
+		return sgvinterpret(toget.data()+sgv.size(),toget.size()-sgv.size(),behead,false,origin,outdata,false);
 		}
 
 ///api/v1/entries.json
@@ -1658,27 +1800,27 @@ std::string_view sgv="sgv.json";
 		if(posptr[1]=='/') {
 			if((*posptr=='1'||*posptr=='2')) {
 				posptr+=2;
-				return apiv1(posptr,toget.end()-posptr,behead,json,outdata);
+				return apiv1(posptr,toget.end()-posptr,behead,json,seclen,origin,outdata);
 				}
 			if(*posptr=='3') {
 				posptr+=2;
-				return apiv3(posptr,toget.end(),outdata);
+				return apiv3(posptr,toget.end(),origin,outdata);
 				}
 			}
 
 
 		}
 if(!memcmp(jugglucocommand.data(),posptr,jugglucocommand.size())) {
-	return jugglucos(posptr+jugglucocommand.size(),toget.size()-jugglucocommand.size(),outdata);
+	return jugglucos(posptr+jugglucocommand.size(),toget.size()-jugglucocommand.size(),origin,outdata);
 	}
 
 constexpr const std::string_view pebble="pebble";
 	if(!memcmp(pebble.data(),toget.data(),pebble.size())) {
-		return pebbleinterpret(toget.data()+pebble.size(),toget.size()-pebble.size(),outdata);
+		return pebbleinterpret(toget.data()+pebble.size(),toget.size()-pebble.size(),origin,outdata);
 		} 
 constexpr const std::string_view status="status.json";
 	if(!memcmp(status.data(),toget.data(),status.size())) {
-		return givedripstatus(outdata);
+		return givedripstatus(origin,outdata);
 		} 
 		/*
 std::string_view socket="socket.io";
@@ -1703,7 +1845,7 @@ const auto indexsize= index.size();
 void wrongpath(std::string_view toget, recdata *outdata) {
 //	const char notfoundtxt[]="HTTP/1.0 404 Not Found\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain\r\nContent-Length: ";
 //	const char notfoundtxt[]="HTTP/1.0 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: ";
-	const char notfoundtxt[]="HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: ";
+	const char notfoundtxt[]="HTTP/1.1 400 Bad Request\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/plain\r\nContent-Length: ";
 	constexpr const int startlen=sizeof(notfoundtxt)-1;
 	constexpr int maxant=4096;
 	char *notfound=outdata->allbuf=new char[maxant];
@@ -1758,9 +1900,18 @@ void mkjsonheader(char *outstart,char *outiter,const bool headonly,recdata *outd
 
 	}
  */
-void mktypeheader(char *outstart,char *outiter,const bool headonly,recdata *outdata,std::string_view type)  {
-	constexpr const char header1[]="HTTP/1.1 200 OK\r\nContent-Type: ";
-	constexpr const int header1len=sizeof(header1)-1;
+static bool alloworigin(std::string_view origin) {
+       return origin.size()>0&&settings->data()->apisecretlength>7;
+	}
+void mktypeheader(char *outstart,char *outiter,const bool headonly,recdata *outdata,std::string_view type,std::string_view origin)  {
+	static constexpr const char httpok[]="HTTP/1.1 200 OK";
+	static constexpr const char allowheader[]="\r\nAccess-Control-Allow-Origin: ";
+	static constexpr const char contenttype[]="\r\nContent-Type: ";
+
+	const bool allow=alloworigin(origin);
+	const int header1len=allow
+		?  (sizeof(httpok)+sizeof(allowheader)+sizeof(contenttype)+origin.size()-3)
+		:  (sizeof(httpok)+sizeof(contenttype)-2);
 	constexpr const char content[]="\r\nContent-Length: " ;
 	constexpr const int contentlen=sizeof(content)-1;
 	const int headerstartlen=header1len+contentlen+type.size();
@@ -1770,10 +1921,14 @@ void mktypeheader(char *outstart,char *outiter,const bool headonly,recdata *outd
 	const int getlen=snprintf(lenstr,maxlen,"%d\r\n\r\n",uitlen);
 	const int headerlen=headerstartlen+getlen;
 	char * const startheader=outstart-headerlen;
-	memcpy(startheader,header1,header1len);
-	char *ptr=startheader+header1len;
-	memcpy(ptr,type.data(),type.size());
-	ptr+=type.size();
+	char *ptr=startheader;
+	addar(ptr,httpok);
+	if(allow) {
+		addar(ptr,allowheader);
+		addstrview(ptr,origin) ;
+		}
+	addar(ptr,contenttype);
+	addstrview(ptr,type) ;
 	memcpy(ptr,content,contentlen);
 	logwriter(startheader,80);
 	memcpy(startheader+headerstartlen,lenstr,getlen);
@@ -1791,8 +1946,8 @@ void mktypeheader(char *outstart,char *outiter,const bool headonly,recdata *outd
 
 	}
 
-void mkjsonheader(char *outstart,char *outiter,const bool headonly,recdata *outdata)  {
-	mktypeheader(outstart,outiter,headonly,outdata, "application/json; charset=utf-8");
+void mkjsonheader(char *outstart,char *outiter,const bool headonly,recdata *outdata,std::string_view origin)  {
+	mktypeheader(outstart,outiter,headonly,outdata, "application/json; charset=utf-8",origin);
 	}
 class Sgvinterpret {
 	bool briefmode=false,sensorinfo=false,alldata=false,noempty=false;
@@ -1808,7 +1963,7 @@ class Sgvinterpret {
 	bool insulin=false;
 	bool mmol=settings->usemmolL();
 	bool getargs(const char *start,int len) ;
-	bool getdata(bool headonly,recdata *outdata) const;
+	bool getdata(bool headonly,std::string_view origin,recdata *outdata) const;
 
 	char *makedata(recdata *outdata ) const;
 private:
@@ -1819,7 +1974,7 @@ private:
 	bool getv1entries(char *&outiter,const int  datnr) const;
 }; 
 
-static bool		 pebbleinterpret(const char *input,int inputlen,recdata *outdata) {
+static bool		 pebbleinterpret(const char *input,int inputlen,std::string_view origin,recdata *outdata) {
 	Sgvinterpret pret;
 	pret.datnr=1;
 	if(!pret.getargs(input,inputlen))  {
@@ -1857,10 +2012,10 @@ static bool		 pebbleinterpret(const char *input,int inputlen,recdata *outdata) {
 		return givenothing(outdata);
 	};
 	addar(--outiter,endpebble);
-	mkjsonheader(start, outiter, false, outdata);
+	mkjsonheader(start, outiter, false, outdata,origin);
 	return true;
 	}
-bool givesgvtxt(const char *input,int inlen,recdata *outdata,char sep) {
+bool givesgvtxt(const char *input,int inlen,std::string_view origin,recdata *outdata,char sep) {
 	Sgvinterpret pret;
 	pret.datnr=10;
 	if(!pret.getargs(input,inlen))  {
@@ -1868,7 +2023,7 @@ bool givesgvtxt(const char *input,int inlen,recdata *outdata,char sep) {
 		return false;
 		}
 	LOGGERWEB("givesgvtxt datnr=%d\n",pret.datnr);
-	return givesgvtxt(pret.datnr,pret.interval,pret.lowerend,pret.higherend,outdata,sep);
+	return givesgvtxt(pret.datnr,pret.interval,pret.lowerend,pret.higherend,origin,outdata,sep);
 	}
 char *Sgvinterpret::makedata(recdata *outdata ) const {
 	char *output=outdata->allbuf= new(std::nothrow) char[512+datnr*360];
@@ -1973,7 +2128,7 @@ static void toend(NumIter<T> *numiters,int maxnum) {
 		}
 	} */
 
-extern char *writetreatment(char *outiter,const int numbase,const int pos,const Num*num,int border);
+extern char *writetreatment(char *outiter,const int numbase,const int pos,const Num*num,int border,int borderID);
 
 int mkid(char *outiter,int base,int pos) {
 	int len=sprintf(outiter,"ba%de%d",base,pos);
@@ -1981,7 +2136,13 @@ int mkid(char *outiter,int base,int pos) {
 	memset(outiter+len,'b',over);
 	return 24;
 	}
-char *writetreatment(char *outiter,const int numbase,const int pos,const Num*num,int border) {
+
+int mkidid(char *outiter,int base,int pos) {
+	int len=sprintf(outiter,"%u%07u%016" PRIx64  ,base,pos,settings->data()->jugglucoID);
+	return len;
+	}
+
+char *writetreatment(char *outiter,const int numbase,const int pos,const Num*num,int border,int borderID) {
 	const int type=num->type;
 	if(type>=settings->varcount()||!settings->data()->Nightnums[type].kind) {
 		return outiter;
@@ -1990,14 +2151,19 @@ char *writetreatment(char *outiter,const int numbase,const int pos,const Num*num
         struct tm tmbuf;
         gmtime_r(&tim, &tmbuf);
 		addar(outiter,R"({"_id":")");
+	if(pos>=borderID) {
+		outiter+=mkidid(outiter,numbase,pos);
+		}
+	else {
+		if(pos>=border) 
+			outiter+=mkid(outiter,numbase,pos);
+		else
+			outiter+=sprintf(outiter,"num%d#%d",numbase,pos);
+		}
 
-	if(pos>=border) 
-		outiter+=mkid(outiter,numbase,pos);
-	else
-		outiter+=sprintf(outiter,"num%d#%d",numbase,pos);
 
-
-	addar(outiter,R"(","eventType":"<none>","enteredBy":"Juggluco","created_at":")");
+	outiter+=sprintf(outiter,R"(","date":%lu)",tim);
+	addar(outiter,R"(000,"eventType":"<none>","enteredBy":"Juggluco","created_at":")");
 	outiter+=sprintf(outiter,R"(%04d-%02d-%02dT%02d:%02d:%02d.000Z",)",tmbuf.tm_year+1900,tmbuf.tm_mon+1,tmbuf.tm_mday, tmbuf.tm_hour, tmbuf.tm_min,tmbuf.tm_sec);
 
 	float w=0.0f;
@@ -2027,7 +2193,7 @@ char *writetreatment(char *outiter,const int numbase,const int pos,const Num*num
 		}
 	return outiter;
 	}
-static bool givetreatments(const char *args,int argslen, recdata *outdata)  {
+static bool givetreatments(const char *args,int argslen, std::string_view origin,recdata *outdata)  {
 	Sgvinterpret pret;
 	pret.datnr=100;
 	std::string_view json{".json"	};
@@ -2089,7 +2255,8 @@ static bool givetreatments(const char *args,int argslen, recdata *outdata)  {
 				}
 			const int pos=num-numdatas[ind]->begin();
 			const int border=numdatas[ind]->getnightSwitch();
-			char *out=writetreatment(outiter,ind,pos,num,border);
+			const int borderID=numdatas[ind]->getnightIDstart();
+			char *out=writetreatment(outiter,ind,pos,num,border,borderID);
 			if(out!=outiter) {
 				outiter=out;
 				i++;
@@ -2099,12 +2266,12 @@ static bool givetreatments(const char *args,int argslen, recdata *outdata)  {
 		}
 	 *outiter++=']';
 	 *outiter++='\n';
-       mkjsonheader(outstart,outiter, false,outdata);
+       mkjsonheader(outstart,outiter, false,outdata,origin);
        LOGGER("givetreatments nr=%d len=%d %.50s\n",i,outiter-outstart,outstart);
        return true;
 	}
 
-bool Sgvinterpret::getdata(bool headonly,recdata *outdata) const {
+bool Sgvinterpret::getdata(bool headonly,std::string_view origin,recdata *outdata) const {
 	if(!sensors)	
 		return false;
 	LOGGERWEB("count=%d\n",datnr);
@@ -2128,7 +2295,7 @@ bool Sgvinterpret::getdata(bool headonly,recdata *outdata) const {
 	  *outiter++=']';
 	  *outiter++='\n';
 	  }
-       mkjsonheader(outstart,outiter, headonly,outdata);
+       mkjsonheader(outstart,outiter, headonly,outdata,origin);
 	return true;
 	}
 
@@ -2355,11 +2522,11 @@ int rewriteperc(char *start,int len) {
 	return true;
 	};
 
-static bool	 currentjson(recdata *outdata) {
+static bool	 currentjson(std::string_view origin,recdata *outdata) {
 	Sgvinterpret pret(true,true,1);
-	return pret.getdata(false,outdata);
+	return pret.getdata(false,origin,outdata);
 	}
-static bool	 sgvinterpret(const char *start,int len,bool headonly,bool gmt,recdata *outdata,bool all) {
+static bool	 sgvinterpret(const char *start,int len,bool headonly,bool gmt,std::string_view origin,recdata *outdata,bool all) {
 	Sgvinterpret pret(all,gmt);
 	if(!pret.getargs(start,len)) {
 
@@ -2368,7 +2535,7 @@ static bool	 sgvinterpret(const char *start,int len,bool headonly,bool gmt,recda
 		return false;
 		}
 	LOGGERWEB("lowerend=%d higherend=%d\n",pret.lowerend,pret.higherend);
-	return pret.getdata(headonly,outdata);
+	return pret.getdata(headonly,origin,outdata);
 	}
 
 
@@ -2386,6 +2553,7 @@ public:
 	int datnr=24;
 	uint32_t lowerend=0,higherend=INT32_MAX;
 	bool decrease=false;
+	bool fields=false;
 	bool getargs(const char *start,int len) ;
 	char * 		 treatmentlist(char *outstart,uint32_t,uint32_t *) const;
 	}; 
@@ -2404,6 +2572,7 @@ public:
 
 				return false;
 				}
+			continue;
 			}
 		else {
 		std::string_view sort="sort";
@@ -2419,14 +2588,20 @@ public:
 					continue;
 					}
 				}
+			std::string_view datestr="=date";
+			if(!memcmp(iter,datestr.data(),datestr.size())) {
+				iter+=datestr.length();
+				continue;
+				}
 			LOGGERWEB("unknown option %.10s\n",iter);
 			continue;
 			}
 		else {
 //		created_at$gt=2023-10-02T13:45:26.653Z
 		 std::string_view findstr="created_at$";
-		 if(!memcmp(iter,findstr.data(),findstr.size())) {
-			iter+=findstr.size();
+		 std::string_view datestr="date$";
+		 if((!memcmp(iter,findstr.data(),findstr.size())&&(iter+=findstr.size(),true))||
+		 (!memcmp(iter,datestr.data(),datestr.size())&&(iter+=datestr.size(),true))) {
 			std::string_view gtstr="gt";
 			if(!memcmp(iter,gtstr.data(),gtstr.size())) {
 				iter+=gtstr.size();
@@ -2507,8 +2682,15 @@ public:
 						}
 				  }
 				}
+			continue;
 			}
-			}	
+
+			 std::string_view fieldsstr="fields=sgv,direction,date";
+			 if(!memcmp(iter,fieldsstr.data(),fieldsstr.size())) {
+			 	iter+=fieldsstr.size();
+				fields=true;
+				}	
+			}
 			}
 		}
 	if(!datnr) {
@@ -2520,7 +2702,8 @@ public:
 	};
 
 extern int mkidV3(char *outiter,int base,int pos) ;
-char *writetreatmentv3(char *outiter,const int numbase,const int pos,const Num*num,uint32_t modified,bool invalid) {
+extern int mkididV3(char *outiter,int base,int pos) ;
+char *writetreatmentv3(char *outiter,const int numbase,const int pos,const Num*num,uint32_t modified,bool invalid,int borderID) {
 	const int typein=num->type;
 	const int type=num->type&Numdata::otherbits;
 	if(typein>=settings->varcount()||!settings->data()->Nightnums[type].kind) {
@@ -2563,7 +2746,7 @@ char *writetreatmentv3(char *outiter,const int numbase,const int pos,const Num*n
 		}
 	LOGAR("before utcOffset");
 	addar(outiter,R"("utcOffset":0,"identifier":")");
-	outiter+=mkidV3(outiter,numbase,pos);
+	outiter+=(pos>=borderID?mkididV3:mkidV3)(outiter,numbase,pos);
 	LOGAR("before srvModified");
 	outiter+=sprintf(outiter,R"(","srvModified":%u000,"srvCreated":%lu000)",modified,tim);
 	if(invalid) {
@@ -2605,7 +2788,7 @@ char * 		 V3Args::treatmentlist(char *outstart,uint32_t minmodified,uint32_t *la
 			uint32_t chtime=numdatas[ind]->changed(pos);	
 			LOGGER("%d changetime(%d)==%u\n",ind,pos,chtime);
 			if(chtime>minmodified||(!chtime&&(chtime=num->gettime())>minmodified)) {
-				char *out=writetreatmentv3(outiter,ind,pos,num,chtime,(num->type&Numdata::removedbit)&&minmodified);
+				char *out=writetreatmentv3(outiter,ind,pos,num,chtime,(num->type&Numdata::removedbit)&&minmodified,numdatas[ind]->getnightIDstart());
 				if(out!=outiter) {
 					lastmodified=std::max(lastmodified,chtime);
 					outiter=out;
@@ -2629,7 +2812,7 @@ char * 		 V3Args::treatmentlist(char *outstart,uint32_t minmodified,uint32_t *la
 							}
 						if(minmodified<chtime) {
 							LOGGER("%d: %d changed\n",nd,cha);
-							char *out=writetreatmentv3(outiter,nd,cha,beg+cha,chtime,true);
+							char *out=writetreatmentv3(outiter,nd,cha,beg+cha,chtime,true,numdata->getnightIDstart());
 							if(out!=outiter) {
 								lastmodified=std::max(lastmodified,chtime);
 								outiter=out;
@@ -2681,7 +2864,7 @@ bool treatmenthistoryV3(const char *start,const char *ends,recdata *outdata) {
 		wrongpath({start,(size_t)(end-start)},outdata);
 	}
 	*/
-bool		 getv3treatments(const char *input,int inputlen,recdata *outdata,uint32_t modifiedafter) {
+bool		 getv3treatments(const char *input,int inputlen,std::string_view origin,recdata *outdata,uint32_t modifiedafter) {
 	V3Args args; 
 	if(!args.getargs(input,inputlen)) {
 		wrongpath({input,(size_t)inputlen},outdata);
@@ -2705,17 +2888,17 @@ bool		 getv3treatments(const char *input,int inputlen,recdata *outdata,uint32_t 
 	char buf[buflen];
 	char *ptr=buf+snprintf(buf,buflen,"application/json; charset=utf-8\r\netag: W/\"%u000\"\r\nlast-modified: " ,lastmodified);
 	ptr+=formattime(ptr,lastmodified);
-	mktypeheader(outstart,outiter,false,outdata, {buf,(size_t)(ptr-buf)});
+	mktypeheader(outstart,outiter,false,outdata, {buf,(size_t)(ptr-buf)},origin);
        return true;
 	}
 
-bool treatmenthistoryV3(const char *start,const char *ends,recdata *outdata) {
+bool treatmenthistoryV3(const char *start,const char *ends,std::string_view origin,recdata *outdata) {
 	longlongtype modifiedafter;
 	if(const char *input=readnum(start,ends,modifiedafter)) {
 		if(modifiedafter>10443596400LL)
 			modifiedafter/=1000LL;
 		LOGGER("history %ld %s\n",modifiedafter,ctime((time_t*)&modifiedafter));
-		return 	 getv3treatments(input,ends-input,outdata,(uint32_t)modifiedafter);
+		return 	 getv3treatments(input,ends-input,origin,outdata,(uint32_t)modifiedafter);
 		}
 	else  {
 		wrongpath({start,(size_t)(ends-start)},outdata);
@@ -2753,7 +2936,56 @@ return len;
 //c149bacfb000007f
 }
 */
-bool getv3entries(const char *cmdstart,const char *cmdend,recdata *outdata) {
+
+//{"sgv":113,"direction":"Flat","srvCreated":1706383248228}
+/*
+ {
+      "date": 1706539449000,
+      "sgv": 132,
+      "direction": "Flat"
+    } */
+static char * writev3entryfield(char *outin,const ScanData *val,const bool date,const bool sgv,const bool direction) {
+	char *outptr=outin;
+	*outptr++='{';
+	bool wrote=false;
+	if(date) {
+		addar(outptr,R"("date":)");
+		if(auto [ptr,ec]=std::to_chars(outptr,outptr+12,val->gettime());ec == std::errc()) {
+			outptr=ptr;
+			}
+		else {
+			LOGGER("tochar failed: %s\n",std::make_error_code(ec).message().c_str());
+			}
+		addar(outptr,R"(000)");
+		wrote=true;
+	     }
+	   if(sgv) {
+	   	if(wrote)
+			*outptr++=',';
+		else
+			wrote=true;
+		addar(outptr,R"("sgv":)");
+		if(auto [ptr,ec]=std::to_chars(outptr,outptr+12,val->getmgdL());ec == std::errc()) {
+			outptr=ptr;
+			}
+		else {
+			LOGGER("tochar failed: %s\n",std::make_error_code(ec).message().c_str());
+			}
+		}
+	if(direction) {
+	   	if(wrote)
+			*outptr++=',';
+		addar(outptr,R"("direction":")");
+		 std::string_view name=getdeltaname(val->ch);
+		addstrview(outptr,name);
+		addar(outptr,R"("})");
+		}
+	else {
+		*outptr='}';
+		}
+	return outptr;
+	}
+bool getv3entries(const char *cmdstart,const char *cmdend,std::string_view origin,recdata *outdata) {
 	std::string_view history="/history/";
 	longlongtype lowerend=0;
 	if(!memcmp(cmdstart,history.data(),history.size()))  {
@@ -2788,13 +3020,12 @@ bool getv3entries(const char *cmdstart,const char *cmdend,recdata *outdata) {
 	addar(outiter,begin);
 	uint32_t lastmodified;
 	if(args.decrease) {
-		 lastmodified=getitems(outiter,count, args.lowerend,args.higherend,false, 55,[](char *outiter,int datit, const ScanData *iter,const sensorname_t *sensorname,const time_t starttime)
+		 lastmodified=getitems(outiter,count, args.lowerend,args.higherend,false, 55,[fields=(bool)args.fields](char *outiter,int datit, const ScanData *iter,const sensorname_t *sensorname,const time_t starttime)
 
 				{
-				char *out=writev3entry(outiter,iter, sensorname,true);
+				char *out=fields?writev3entryfield(outiter,iter,true,true,true):writev3entry(outiter,iter, sensorname,true);
 				*out++=',';
 				return out;
-				
 				}
 				); 
 				/*
@@ -2819,10 +3050,30 @@ bool getv3entries(const char *cmdstart,const char *cmdend,recdata *outdata) {
 	char buf[buflen];
 	char *ptr=buf+snprintf(buf,buflen,"application/json; charset=utf-8\r\netag: W/\"%u000\"\r\nlast-modified: " ,lastmodified);
 	ptr+=formattime(ptr,lastmodified);
-	mktypeheader(start,outiter,false,outdata, {buf,(size_t)(ptr-buf)});
+	mktypeheader(start,outiter,false,outdata, {buf,(size_t)(ptr-buf)},origin);
 	return true;
 
 	}
+
+int mkididV3(char *input,int base,int pos) {
+	char *outiter=input;
+	constexpr const  char temp[]="ffffffffffff";
+	memcpy(outiter,temp,4);
+	if(auto [ptr,ec]=std::to_chars(outiter,outiter+10,base);ec != std::errc()) {
+		LOGGER("tochar failed: %s\n",std::make_error_code(ec).message().c_str());
+		}
+	outiter+=4;
+	uint16_t *id=reinterpret_cast<uint16_t *>(&settings->data()->jugglucoID);
+	outiter+=sprintf(outiter,"%04x-%04x-%04x-%04x-",id[0],id[1],id[2],id[3]);
+	memcpy(outiter,temp,sizeof(temp)-1);
+	if(auto [ptr,ec]=std::to_chars(outiter,outiter+10,pos);ec != std::errc()) {
+		LOGGER("tochar failed: %s\n",std::make_error_code(ec).message().c_str());
+		}
+	return 36;
+	}
+
+
+
 int mkidV3(char *outiter,int base,int pos) {
 	constexpr const  char temp[]="ffffffff-ffff-ffff-ffff-ffffffffffff";
 	memcpy(outiter,temp,sizeof(temp));
@@ -2835,6 +3086,7 @@ int mkidV3(char *outiter,int base,int pos) {
 		}
 	return sizeof(temp)-1;
 	}
+
 
 #endif
 

@@ -1,5 +1,27 @@
+/*      This file is part of Juggluco, an Android app to receive and display         */
+/*      glucose values from Freestyle Libre 2 and 3 sensors.                         */
+/*                                                                                   */
+/*      Copyright (C) 2021 Jaap Korthals Altes <jaapkorthalsaltes@gmail.com>         */
+/*                                                                                   */
+/*      Juggluco is free software: you can redistribute it and/or modify             */
+/*      it under the terms of the GNU General Public License as published            */
+/*      by the Free Software Foundation, either version 3 of the License, or         */
+/*      (at your option) any later version.                                          */
+/*                                                                                   */
+/*      Juggluco is distributed in the hope that it will be useful, but              */
+/*      WITHOUT ANY WARRANTY; without even the implied warranty of                   */
+/*      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.                         */
+/*      See the GNU General Public License for more details.                         */
+/*                                                                                   */
+/*      You should have received a copy of the GNU General Public License            */
+/*      along with Juggluco. If not, see <https://www.gnu.org/licenses/>.            */
+/*                                                                                   */
+/*      Sun Mar 10 11:40:55 CET 2024                                                 */
+
+
 package tk.glucodata;
 
+import static tk.glucodata.Notify.glucosetimeout;
 import static tk.glucodata.Notify.penmutable;
 import static tk.glucodata.Notify.timef;
 
@@ -21,7 +43,7 @@ private static void setWidth(int widthdip) {
 		var    widthpx = widthdip*GlucoseCurve.getDensity();
 //		var fontsize=widthpx*0.22f;
 		var fontsize=widthpx*(Applic.unit==1?0.35f:0.4f);
-		remote=  new RemoteGlucose(fontsize,widthpx,Applic.unit==1?0.30f:0.32f,2);
+		remote=  new RemoteGlucose(fontsize,widthpx,Applic.unit==1?0.30f:0.32f,2,true);
 		width=widthdip;
 		}
  @Override
@@ -40,8 +62,7 @@ static private RemoteViews remoteMessage(String message) {
                 remoteViews.setTextViewText(R.id.content, message);
 		return remoteViews;
 	}
-static private long oldage=60*3*1000L;
-
+static private long oldage=glucosetimeout;
 static private void showviews(RemoteViews views,int rId,AppWidgetManager appWidgetManager, int appWidgetId) {
 	 Intent intent = new Intent(Applic.app, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(Applic.app, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT|penmutable);
@@ -73,7 +94,7 @@ static private void showviews(RemoteViews views,int rId,AppWidgetManager appWidg
 		final var time=SuperGattCallback.previousglucose.time;
 		if((now-time)>oldage) {
 			final String tformat= timef.format(time);
-			String message = Applic.app.getString(R.string.nonewvalue) + tformat;
+			String message = "\n  "+Applic.app.getString(R.string.nonewvalue) + tformat;
 			views=remoteMessage(message);
 			id=R.id.content;
 		}
@@ -82,7 +103,7 @@ static private void showviews(RemoteViews views,int rId,AppWidgetManager appWidg
 			}
 		}
 	else {
-			views=remoteMessage("   "+Applic.app.getString(R.string.novalue));
+			views=remoteMessage("\n  "+Applic.app.getString(R.string.novalue));
 			id=R.id.content;
 			}
 
@@ -144,11 +165,6 @@ public static void oldvalue(long time) {
 		int ids[] = manage.getAppWidgetIds(new ComponentName(Applic.app, cl));
 		if(ids.length>0) {
 			updateall(Applic.app, manage, ids);
-			/*
-			Intent intent = new Intent(Applic.app,cl);
-			intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-			intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS,ids);
-			Applic.app.sendBroadcast(intent); */
 			}
 		else
 			used=false;

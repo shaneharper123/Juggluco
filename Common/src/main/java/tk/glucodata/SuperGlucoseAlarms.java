@@ -28,10 +28,10 @@ import static tk.glucodata.Natives.hasalarmloss;
 public class SuperGlucoseAlarms {
     final private static String LOG_ID="SuperGlucoseAlarms";
 public SuperGlucoseAlarms(Application context) {
-	Notify.init();
+	Notify.init(context);
 	}
 
-static final int showtime = 3 * 60 * 1000;
+static final long showtime = Notify.glucosetimeout;
 
 
 public	static long waitmmsec() {
@@ -83,6 +83,7 @@ public	void handlealarm() {
 	}
 
 public void setagealarm(final long numsec) {
+		Notify.stoplossalarm();
 		saidloss = false;
 		MyGattCallback.oldtime = numsec + showtime;
 		LossOfSensorAlarm.setalarm(Applic.app, MyGattCallback.oldtime);

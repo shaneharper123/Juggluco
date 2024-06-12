@@ -18,6 +18,7 @@
 /*                                                                                   */
 /*      Fri Jan 27 15:20:04 CET 2023                                                 */
 
+#define USE_RUSSIAN 1 
 
 #define MENUARROWS 1
 #define PERCENTILES 1
@@ -34,6 +35,7 @@
 #include <cinttypes>
 #include <charconv>
 
+using namespace std::literals;
 //#include "glucose.h"
 //ScanData   *glucosenow=nullptr;
 
@@ -645,7 +647,8 @@ std::vector<pair<const ScanData*,const ScanData*>> getsensorranges(uint32_t star
 		}
 	return polldata;
 	}
-static uint32_t pollgapdist=5*60;
+//static uint32_t pollgapdist=5*60;
+static uint32_t pollgapdist=330;
 pair<const ScanData*,const ScanData*> getScanRangeRuim(const ScanData *scan,const int len,const uint32_t start,const uint32_t end) {
 	auto [low,high]= getScanRange(scan,len,start,end);
 	const ScanData *endscan= scan+len;
@@ -789,15 +792,26 @@ static void makecircle(float posx,float posy) {
 
 	}
 
-template <class TX,class TY> void showlineScan(NVGcontext* genVG,const ScanData *low,const ScanData *high,  const TX &transx,  const TY &transy,const int colorindex) {
+template <class TX,class TY> void showlineScan(NVGcontext* genVG,const ScanData *low,const ScanData *high,  const TX &transx,  const TY &transy,const int colorindex
+#ifdef SI5MIN
+,bool isSibionics
+#endif
+) {
 	bool search=streamsearchtype==(streamsearchtype&searchdata.type);
+//   uint32_t dif=isSibionics?450:pollgapdist;
+#ifdef SI5MIN
+   uint32_t dif=isSibionics?8*60:pollgapdist;
+#else
+   uint32_t dif=pollgapdist;
+#endif
+
 	if(search) {
 		nvgBeginPath(genVG);
 //		nvgStrokeColor(genVG, yellow); nvgFillColor(genVG, yellow);
 		nvgStrokeColor(genVG, *getyellow()); nvgFillColor(genVG, *getyellow());
 		nvgStrokeWidth(genVG, hitStrokeWidth);
 		bool restart=true,first;
-		uint32_t late=0,dif=pollgapdist;
+		uint32_t late=0;
 		bool washit=false;
 		float prevx=-1.0f,prevy;
 		for(const ScanData *it=low;it!=high;it++) {
@@ -855,7 +869,7 @@ template <class TX,class TY> void showlineScan(NVGcontext* genVG,const ScanData 
 	nvgStrokeColor(genVG, *col);
 	nvgFillColor(genVG,*col);
 	nvgStrokeWidth(genVG, pollCurveStrokeWidth);
-	uint32_t late=0,dif=5*60;
+	uint32_t late=0;
 	float startx=-1000,starty=-1000;
 	for(const ScanData *it=low;it!=high;it++) {
 		if(it->valid()) {
@@ -1026,6 +1040,10 @@ uint32_t maxstarttime() ;
 uint32_t maxtime() {
 	const uint32_t numt=getnumlasttime();
 	const uint32_t sent= sensors->timelastdata(); 
+	#ifdef NOLOG
+	time_t tim=sent;
+	LOGGER("sensors->timelastdata()=%u %s",sent,ctime(&tim));
+	#endif
 	return max(numt,sent);
 	}
 	
@@ -1048,6 +1066,26 @@ uint32_t mintime() {
 int gmin=2*180;
 int grange=8*180;
 uint32_t starttime;
+int diffcurrent=0;
+extern void setstarttime(uint32_t);
+bool doclamp=false;
+void setdiffcurrent() {
+	//diffcurrent=(uint64_t)time(nullptr)-starttime;
+	auto now=time(nullptr);
+	diffcurrent=now-starttime;
+	if(diffcurrent>(duration*5/6)) {
+		doclamp=false;
+		}
+	doclamp=true;
+	LOGGER("now=%u starttime=%u diffcurrent=%d\n",now,starttime,diffcurrent);
+	}
+extern bool nowclamp;
+void setstarttime(uint32_t newstart) {
+	starttime=newstart;
+	if(nowclamp) {
+		setdiffcurrent();
+		}
+	}
 uint32_t maxstarttime() {
 //	return maxtime()-duration/2;
 	float duraf=((float)valuesize/dwidth);
@@ -1073,11 +1111,11 @@ uint32_t minstarttime() {
 void begrenstijd() {
 	auto maxstart= maxstarttime();
 	if(starttime>maxstart)
-		starttime=maxstart;
+		setstarttime(maxstart);
 	else {
 		auto minstart= minstarttime();
 		if(starttime<minstart)
-			starttime=minstart;
+			setstarttime(minstart);
 		}
 	}
 
@@ -1209,7 +1247,6 @@ int getglucosestr(uint32_t nonconvert,char *glucosestr,int maxglucosestr) {
 		}
 	}
 
-constexpr int maxbluetoothage=3*60;
 static void	showscanner(NVGcontext* genVG,const SensorGlucoseData *hist,int scanident,time_t nu) {
 	const ScanData &last=*hist->getscan(scanident);
 	const bool isold=(nu-last.t)>=maxbluetoothage;
@@ -1260,8 +1297,8 @@ static void	showscanner(NVGcontext* genVG,const SensorGlucoseData *hist,int scan
 	const float yunder=y+(showabove?-1:1)*headsize/2.0;
 	nvgFontSize(genVG,mediumfont );
 	nvgText(genVG, endtime,yunder, buf, buf+len);
-	const sensorname_t *sensorname=hist->shortsensorname();
-	nvgFontSize(genVG,smallsize );
+	const sensorname_t *sensorname=hist->othershortsensorname();
+	nvgFontSize(genVG,headsize*.134f );
 	nvgTextAlign(genVG,NVG_ALIGN_LEFT|NVG_ALIGN_MIDDLE);
     const auto sensorx=bounds[0] -sensleft;
 	nvgText(genVG,sensorx,yunder, sensorname->begin(), sensorname->end());
@@ -1498,7 +1535,7 @@ template <class LT> void epochlines(uint32_t first,uint32_t last, const LT &tran
 		nvgStrokeColor(genVG, *getblack());
 		for(time_t t=start;t<last;t+=(24*60*60)) {
 			float dtim=transx(t);
-			LOGGER("%ld\n",t);
+		//	LOGGER("%ld\n",t);
 			nvgBeginPath(genVG);
 			nvgMoveTo(genVG,dtim ,0) ;
 			nvgLineTo( genVG, dtim,dheight);
@@ -1532,12 +1569,14 @@ uint32_t lastsensorends() {
 		int lastsen=sensors->last();
 		if(lastsen>=0) {
 			const sensor *sen=sensors->getsensor(lastsen);
-			time_t enddate= (14*24)*60*60+sen->starttime;
-			return enddate;
+//			time_t enddate= (14*24)*60*60+sen->starttime;
+			return (14*24)*60*60+sen->starttime;
+			
+			//return sen->maxtime();
 			}
 		return 0;
 		}
-//void	showbluevalue(const float dlast,const time_t nu,const int xpos) {
+//void	showbluevalue(const float dlast,const time_t nu,const int xpos) 
 
 void drawarrow(NVGcontext* genVG, float rate,float getx,float gety) {
 		if(!isnan(rate)) {
@@ -1592,8 +1631,10 @@ float glucosevalue=0;
 float glucosevaluex=-1,glucosevaluey=-1;
 } ;
 std::vector<shownglucose_t> shownglucose;
-
-void showvalue(const ScanData *poll,const sensorname_t *sensorname, float getx,float gety,int index) {
+#ifndef NOLOG
+//#define TESTVALUE
+#endif
+static void showvalue(const ScanData *poll,const sensorname_t *sensorname, float getx,float gety,int index,uint32_t nu) {
 	LOGGER("showvalue %s\n",sensorname->data());
 	float sensory= gety+headsize/3.1;
 	nvgFillColor(genVG, *getblack());
@@ -1603,7 +1644,10 @@ void showvalue(const ScanData *poll,const sensorname_t *sensorname, float getx,f
 	nvgTextAlign(genVG,NVG_ALIGN_LEFT|NVG_ALIGN_MIDDLE);
 	constexpr const int maxhead=11;
 	char head[maxhead];
-#if 1
+#ifdef TESTVALUE
+   static int values[]={230,184};
+	const auto nonconvert= values[index];
+#elif 1
 	const auto nonconvert= poll->g;
 #else
 	const uint32_t nonconvert= 40;
@@ -1629,13 +1673,19 @@ const				float valuex=getx;
 #else
 			const float convglucose= gconvert(nonconvert*10);
 #endif
+
 		shownglucose[index].glucosevalue=convglucose;
 		shownglucose[index].glucosetrend=poll->tr;
 
 			float valuex=getx-(convglucose>=10.0f?density*20.0f:0.0f);
 			int gllen=snprintf(head,maxhead,gformat,convglucose);
 			nvgText(genVG,valuex ,gety, head, head+gllen);
-			float rate=poll->ch;
+#ifdef TESTVALUE
+const float trends[]={-3,0};
+			const float rate=trends[index];
+#else
+			const float rate=poll->ch;
+#endif
 			drawarrow(genVG,rate,valuex-10*density,gety);
 			}
 		}
@@ -1675,6 +1725,16 @@ static int showerrorvalue(const SensorGlucoseData *sens,const time_t nu,float ge
 				return 3;
 				} 
 			else {
+           if((nu-sens->receivehistory)<60) {
+					static char buf[256];
+					auto past=usedtext->receivingpastvalues;
+					memcpy(buf,past.data(),past.size());
+					char *ptr=buf+past.size();
+					ptr+=sprintf(ptr,": %d",sens->pollcount());
+					nvgTextBox(genVG,  getx, gety, getboxwidth(getx),buf, ptr);
+					shownglucose[index].errortext=buf;
+            }
+            else {
 				if(sens->sensorerror) {
 					const std::string_view sensorerror= sens->replacesensor?usedtext->streplacesensor: usedtext->stsensorerror;
 					char buf[sensorerror.size()+17];
@@ -1703,6 +1763,7 @@ static int showerrorvalue(const SensorGlucoseData *sens,const time_t nu,float ge
 					shownglucose[index].errortext=usedtext->noconnectionerror.data();
 					}
 					}
+               }
 				return 0;
 				}
 			}
@@ -1719,14 +1780,19 @@ static void showlastsstream(const time_t nu,const float getx,std::vector<int> &u
 	bool neterror=false,usebluetoothoff=false,bluetoothoff=false,otherproblem=false;
 	static int failures=0;
 	++failures;
-	shownglucose.resize(used.size());
+	const auto usedsize=used.size();
+	shownglucose.resize(usedsize);
 
-	for(int i=0;i<used.size();i++) {
+	for(int i=0;i<usedsize;i++) {
 		shownglucose[i].glucosevaluex=-1;
 		const int sensorindex=used[i];
 		SensorGlucoseData *hist=sensors->getSensorData(sensorindex);
 		int yh=i*2+1;
-		float gety=smallsize*.5f+dtop+dheight*yh/(used.size()*2.0f);
+#ifdef WEAROS
+		float gety=smallsize*.5f+dtop+dheight*yh/(usedsize*2.0f);
+#else
+		float gety=smallsize*1.4f+dtop+(dheight-smallsize*.8f)*yh/(usedsize*2.0f);
+#endif
 		const ScanData *poll=hist->lastpoll();
 		if(poll) {
 			LOGSTRING("poll!=null\n");
@@ -1742,9 +1808,9 @@ static void showlastsstream(const time_t nu,const float getx,std::vector<int> &u
 				float sensory= gety+headsize/3.1f;
 				nvgRect(genVG, getx+sensorbounds.left, sensorbounds.top+sensory, relage*sensorbounds.width, sensorbounds.height);
 				nvgFill(genVG);
-				showvalue(poll,hist->shortsensorname(),getx,gety,i);
+				showvalue(poll,hist->othershortsensorname(),getx,gety,i,nu);
 				success=true;
-				if(!hist->isLibre3()) {
+				if(hist->isLibre2()) {
 					 if(settings->data()->libreIsViewed&&!hist->getinfo()->libreviewsendall) {
 #ifdef NOTALLVIES
 						if(poll->t>nexttimeviewed) 
@@ -1781,26 +1847,42 @@ static void showlastsstream(const time_t nu,const float getx,std::vector<int> &u
 			auto wait= nu-starttime;
 			LOGGER("wait=%lu starttime=%lu %s",wait,starttime,ctime(&starttime));
 			if(wait<(60*60)) {
-			//	const bool streaming=hist->deviceaddress()[0];
-				const bool isInitialised=hist->isLibre3()||sensors->getsensor(sensorindex)->initialized;
-				LOGGER("wait<(60*60) isInitialised=%d\n",isInitialised);
-
 				float usegetx=getx-headsize/3;
 				nvgTextAlign(genVG,NVG_ALIGN_LEFT|NVG_ALIGN_MIDDLE);
 				nvgFontSize(genVG,headsize/6 );
-//				static char buf[usedtext->readysecEnable.size()+6];
-				static char buf[256];
-				int minutes=60-(wait/60);
-				int ends=sprintf(buf,isInitialised?usedtext->readysec.data():usedtext->readysecEnable.data(),minutes);
 				getboxwidth(usegetx);
-				nvgTextBox(genVG,  usegetx, gety, getboxwidth(usegetx), buf,buf+ends);
-				shownglucose[i].errortext=buf;
+				const char *bufptr;
+				int ends;
+
+				if(hist->isSibionics()) {
+					static constexpr const std::string_view siwait{"Waiting for connection"sv};
+					bufptr=siwait.data();
+					ends=siwait.size();
+					}
+				else {
+					const bool isInitialised=(!hist->isLibre2())||sensors->getsensor(sensorindex)->initialized;
+					LOGGER("wait<(60*60) isInitialised=%d\n",isInitialised);
+					static char buf[256];
+					int minutes=60-(wait/60);
+					ends=sprintf(buf,isInitialised?usedtext->readysec.data():usedtext->readysecEnable.data(),minutes);
+					bufptr=buf;
+					}
+				nvgTextBox(genVG,  usegetx, gety, getboxwidth(usegetx), bufptr,bufptr+ends);
+				shownglucose[i].errortext=bufptr;
 				shownglucose[i].glucosevalue=0;
 				shownglucose[i].glucosevaluex=usegetx;
 				shownglucose[i].glucosevaluey=gety+headsize*.5;
 				}
-			else
-				LOGSTRING("wait>=(60*60)\n");
+			else   {
+				LOGAR("age>=maxbluetoothage");
+				switch(showerrorvalue(hist,nu,getx,gety,i)) { //TODO: integrate with same above
+					case 1: neterror=true;break;
+					case 2: usebluetoothoff=true;break;
+					case 3: bluetoothoff=true;break;
+					default: otherproblem=true;
+					};
+				LOGAR("Afgter showerrorvalue(hist,nu,getx,gety)) ");
+				}
 			}
 
 		}
@@ -1879,12 +1961,15 @@ LOGGER("showbluevalue %zd\n",used.size());
 		char head[maxhead];
 		memcpy(head,usedtext->sensorends.data(),usedtext->sensorends.size());
 
-		if(time_t enddate=lastsensorends()) {
-		const int tstart=usedtext->sensorends.size();
-			char *endstr=head+tstart;
-			int end= datestr(enddate,endstr); 
-			nvgTextAlign(genVG,NVG_ALIGN_CENTER|NVG_ALIGN_BOTTOM);
-			nvgText(genVG, -dheight/2+down-smallfontlineheight,dwidth-timex, std::begin(head), head+end+tstart);
+
+		if(const auto *sens=sensors->getSensorData()) {
+			if(time_t enddate=sens->officialendtime()) {
+				const int tstart=usedtext->sensorends.size();
+				char *endstr=head+tstart;
+				int end= datestr(enddate,endstr); 
+				nvgTextAlign(genVG,NVG_ALIGN_CENTER|NVG_ALIGN_BOTTOM);
+				nvgText(genVG, -dheight/2+down-smallfontlineheight,dwidth-timex, std::begin(head), head+end+tstart);
+				}
 			}
 		nvgResetTransform(genVG);
 		}
@@ -1895,20 +1980,36 @@ LOGGER("showbluevalue %zd\n",used.size());
 		
 		nvgTextAlign(genVG,NVG_ALIGN_LEFT|NVG_ALIGN_TOP);
 		{
-		constexpr int maxbuf=100;
+		constexpr int maxbuf=120;
 		char tbuf[maxbuf];
-           largedaystr(nu,tbuf) ;
+         const int datlen=largedaystr(nu,tbuf) ;
 		const float timex =
 			getx
 		#ifdef WEAROS
 			-timelen
 		#endif
 		;
-		nvgText(genVG, timex,datehigh, tbuf, NULL);
+/*
+#ifndef WEAROS	
+		double getiob(uint32_t);
+		if(const auto iob=getiob(nu)) {
+			datlen+=snprintf(tbuf+datlen,maxbuf-datlen," IOB: %.2f",iob);
+			}
+#endif */
+		nvgText(genVG, timex,datehigh, tbuf, tbuf+datlen);
+
+#ifndef WEAROS	
+	if( settings->data()->IOB) {
+		double getiob(uint32_t);
+		int len=snprintf(tbuf,maxbuf,"IOB: %.2f",getiob(nu));
+		nvgText(genVG, timex,2*smallfontlineheight, tbuf,tbuf+len);
+		}
+#endif
+
 		LOGGER("xpos=%d dwidth=%.1f headsize=%.1f density=%.1f getx=%.1f timex=%.1f\n",xpos,dwidth,headsize, density,getx,timex);
 		}
 	showlastsstream(nu, getx,used) ;
-		}
+	}
 
 void	showsavedomain(const float last, const float dlow,const float dhigh) {
 	nvgBeginPath(genVG);
@@ -2035,8 +2136,11 @@ pair<int32_t,int32_t> *histpositions=nullptr;
 int histlen=0;
 vector<int> hists;
 
-int displaycurve(NVGcontext* genVG,time_t nu,uint32_t starttime,uint32_t endtime) {
-//	if(iswatch) { return showwatchface(nu); }
+int displaycurve(NVGcontext* genVG,time_t nu) {
+	::starttime=(doclamp)?(nu-diffcurrent):(::starttime);
+	const uint32_t starttime=::starttime;
+	const uint32_t endtime=starttime+duration;
+
 
 	mealpos.clear();
 	LOGSTRING("display\n");
@@ -2046,10 +2150,11 @@ int displaycurve(NVGcontext* genVG,time_t nu,uint32_t starttime,uint32_t endtime
 	scanranges=new pair<const ScanData *,const ScanData*> [histlen];
 	delete[] pollranges;
 	pollranges=new pair<const ScanData *,const ScanData*> [histlen];
-//	pair<const ScanData *,const ScanData*> scanranges[histlen];
-//	pair<const ScanData *,const ScanData*> pollranges[histlen];
 	delete[] histpositions;
 	histpositions=new std::remove_reference_t<decltype(histpositions[0])>[histlen];
+#ifdef SI5MIN
+   bool sibionics[histlen];
+#endif
 	LOGSTRING("before getranges\n");
 	for(int i=histlen-1;i>=0;--i) {
 		auto his=sensors->getSensorData(hists[i]);
@@ -2058,7 +2163,7 @@ int displaycurve(NVGcontext* genVG,time_t nu,uint32_t starttime,uint32_t endtime
 			sleep(1);
 			return 0;
 			}
-        	LOGGER("%s\n",his->shortsensorname()->data());
+        	LOGGER("%s\n",his->othershortsensorname()->data());
 		std::span<const ScanData> 	scan;
 		//if(showscans) 
 		{
@@ -2069,6 +2174,9 @@ int displaycurve(NVGcontext* genVG,time_t nu,uint32_t starttime,uint32_t endtime
 		{
 			scan=his->getPolldata();
 			pollranges[i] =getScanRangeRuim(scan.data(),scan.size(),starttime,endtime) ;
+#ifdef SI5MIN
+         sibionics[i]=his->isSibionics();
+#endif
 			}
 //		if(showhistories)
 			histpositions[i]= histPositions(his, starttime,  endtime); 
@@ -2128,7 +2236,11 @@ displaytime disp=getdisplaytime(nu,starttime,endtime, transx);
 			const int index= hists[i];
 //			int  colorindex=(index+nrcolors/4)%nrcolors;
 			int colorindex=segcolor(index,0);
-			showlineScan(genVG,pollranges[i].first,pollranges[i].second,transx,transy,colorindex);
+			showlineScan(genVG,pollranges[i].first,pollranges[i].second,transx,transy,colorindex
+#ifdef SI5MIN
+         ,sibionics[i]
+#endif
+         );
 			 }
 		}
 	LOGSTRING("before showscans\n");
@@ -2318,7 +2430,8 @@ nrmenu=0;
  nrmenu=0,selmenu=0;
   calccurvegegs();
     }
-void withredisplay(NVGcontext* genVG,uint32_t nu,uint32_t endtime)  {
+
+static void withredisplay(NVGcontext* genVG,uint32_t nu)  {
 /*
 if(rotation!=0.0) {
 	LOGGER("rotate %f\n",rotation);
@@ -2338,7 +2451,8 @@ if(rotation!=0.0) {
 int oldtapx=tapx;
 tapx=-8000;
 #endif
-	    if( !displaycurve(genVG,nu,starttime, endtime)&&( ((tapx
+
+	    if( !displaycurve(genVG,nu)&&( ((tapx
 #ifdef WEAROSx
 
 	    =oldtapx
@@ -2373,7 +2487,7 @@ int onestep() {
 	time_t nu=time(nullptr);
 	lastviewtime=nu;
 	updateusedsensors(nu);
-	uint32_t endtime=starttime+duration;
+
 	selshown=false;
 	int ret=0;
 	emptytap=false;
@@ -2392,7 +2506,7 @@ int onestep() {
 #endif
 
 		{
-			withredisplay(genVG,nu,endtime);
+			withredisplay(genVG,nu);
 		}
 	}
 #ifndef WEAROS
@@ -2408,8 +2522,26 @@ extern void render() ;
 
 int getalarmcode(const uint32_t glval,SensorGlucoseData *hist) ;
 extern void     processglucosevalue(int sendindex,int newstart) ;
+
+static bool dohealth(int sensorindex) {
+    static int thesensor=sensorindex;
+    if(!settings->data()->healthConnect)
+        return false;
+    if(usedsensors.size()==1)  {
+        return true;
+    }
+    if(sensorindex==thesensor)
+        return true;
+    auto en=usedsensors.end();
+    if(std::find(usedsensors.begin(),en,thesensor)==en) {
+        thesensor=sensorindex;
+        return true;
+    }
+    return false;
+}
 void     processglucosevalue(int sendindex,int newstart) {
 //	if(!streamvalueshown) return;
+
 extern	bool hasnotiset();
 	if(settings) {
 		if(!sensors)
@@ -2441,12 +2573,13 @@ extern	bool hasnotiset();
 					LOGGER("processglucosevalue finished=%d,doglucose(%s,%d,%f,%f,%d,%lld,%d,%lld)\n", senso->finished,hist->shortsensorname()->data(),poll->g,glu,poll->ch,alarm,tim*1000LL,wasnoblue,startsensor);
 					if(senso->finished) {
 						senso->finished=0;
-						backup->definished(sendindex);
+						backup->resensordata(sendindex);
 						}
 					settings->data()->nobluetooth=true;
 					float rate=poll->ch;
-extern void telldoglucose(const char *name,int32_t mgdl,float glu,float rate,int alarm,int64_t mmsec,bool wasnoblue,int64_t startsensor) ;
-					telldoglucose(hist->shortsensorname()->data(),poll->g,glu,rate,alarm,tim*1000LL,wasnoblue,startsensor);
+extern void telldoglucose(const char *name,int32_t mgdl,float glu,float rate,int alarm,int64_t mmsec,bool wasnoblue,int64_t startsensor,intptr_t) ;
+
+					telldoglucose(hist->shortsensorname()->data(),poll->g,glu,rate,alarm,tim*1000LL,wasnoblue,startsensor,dohealth(sendindex)?reinterpret_cast<intptr_t>(hist):0LL);
 
 				//	wakeuploader();
 extern				void wakewithcurrent();
@@ -2550,10 +2683,15 @@ bool hebrew() {
 	}
 #endif
 
-
+#include "destruct.h"
 void  setlocale(const char *localestrbuf,const size_t len) {
 	LOGGER("locale=%s\n",localestrbuf);
 	localestr={localestrbuf,len};
+	/*
+	#if defined(SIBIONICS) && !defined(WEAROS)
+	destruct dest([] { usedtext->menustr0[5]=usedtext->sibionics;});
+	#endif
+	*/
 	const int16_t lannum=mklanguagenum(localestrbuf);
 	switch(lannum) {
 		case mklanguagenum("DE"):
@@ -2610,15 +2748,14 @@ void  setlocale(const char *localestrbuf,const size_t len) {
 				initfont();
 				}
 			break;
-			#endif
-			/*
+#endif
 		case mklanguagenum("ZH"):
 		case mklanguagenum("zh"):
 			setusezh();
 			if(chfontset!=CHINESE) {
 				initfont();
 				}
-			return; */
+			return; 
 		default: setuseeng();
 		};
 	if(chfontset!=REST) {
@@ -2685,7 +2822,9 @@ void flingX(float vol) {
 		return;
 		}
 #endif
-	starttime-=(duration*1.2*vol/dwidth);
+
+//	starttime-=(duration*1.2*vol/dwidth);
+	setstarttime(starttime-(duration*1.2*vol/dwidth));
 #ifndef WEAROS
 	if(!showpers)
 #endif
@@ -2726,7 +2865,7 @@ static bool ybezig=false;
 #endif
 		{
 			ybezig=false;
-			starttime+=1.2*(dx/dwidth)*duration;
+			setstarttime(starttime+1.2*(dx/dwidth)*duration);
 			#ifndef WEAROS
 			if(!showpers)
 			#endif
@@ -2773,7 +2912,7 @@ void xscaleGesture(float scalex,float midx) {
 	uint32_t focustime=rat*oldduration+starttime;
 	duration=(int)round(oldduration/pow(scalex,5.0));
 	LOGGER("xscale scale=%f mid=%f oldduration=%f newduration=%d\n",scalex,midx,oldduration,duration);
-	starttime=focustime-rat*duration;
+	setstarttime(focustime-rat*duration);
 	auto maxstart= maxstarttime();
 	if(
 #ifndef WEAROS
@@ -2781,7 +2920,7 @@ void xscaleGesture(float scalex,float midx) {
 #endif
 
 	starttime>maxstart)
-		starttime=maxstart;
+		setstarttime(maxstart);
 	setend=0;
 
 	
@@ -2789,19 +2928,21 @@ void xscaleGesture(float scalex,float midx) {
 
 
 void prevscr() {
-	starttime-=duration;
+	setstarttime(starttime-duration);
 	auto minstart= minstarttime();
 	if(starttime<minstart)
-		starttime=minstart;
+		setstarttime(minstart);
 	}
 void  nextscr() {
-	starttime+=duration;
+	setstarttime(starttime+duration);
 #ifndef WEAROS
 	if(!showpers) 
 #endif
 
 	{
-		auto maxstart= maxstarttime(); if(starttime>maxstart) starttime=maxstart;
+		auto maxstart= maxstarttime(); 
+		if(starttime>maxstart) 
+			setstarttime(maxstart);
 		}
 	}
 static int64_t menutap(float x,float y) ;
@@ -3088,19 +3229,24 @@ void textbox(const TI &title,const TE &text) {
 	nvgFontSize(genVG, mediumfont);
 
 	nvgTextAlign(genVG,NVG_ALIGN_LEFT|NVG_ALIGN_TOP);
-	nvgText(genVG, x,y, begin(title),end(title));
+   auto *beg=begin(title);
+   if(*beg) {
+      int siz=sizear(title);
+      nvgText(genVG, x,y, beg,beg+siz);
+      }
 	nvgTextAlign(genVG,NVG_ALIGN_RIGHT|NVG_ALIGN_TOP);
 	showOK(x+width,y);
 	}
 
 class histgegs:public Displayer {
+   const int sensorindex;
 	const SensorGlucoseData *hist;
 	time_t nu;
 #ifndef WEAROS
 strconcat text;
 #endif
 public:
-	histgegs(const SensorGlucoseData *hist): hist(hist)/*,glu(glu),tim(tim)*/,nu(time(nullptr))
+	histgegs(const int sensorindex,const SensorGlucoseData *hist): sensorindex(sensorindex),hist(hist)/*,glu(glu),tim(tim)*/,nu(time(nullptr))
 #ifndef WEAROS
     ,text(getsensorhelp(usedtext->menustr0[3],": ","\n","\n"," "))
 #endif
@@ -3111,19 +3257,21 @@ public:
 	LOGGER("histgegs %s",ctime(&nu));
 	} 
 strconcat  getsensorhelp(string_view starttext,string_view name1,string_view name2,string_view sep1,string_view sep2) {
-	char starts[50],ends[50];
-	time_t stime=hist->getstarttime(),etime= stime+(14*24)*60*60;
+	char starts[50],ends[50],pends[50];
+   const sensor *sensor=sensors->getsensor(sensorindex);
+	time_t stime=hist->getstarttime(),etime= hist->officialendtime(),reallends=hist->isLibre3()?etime:sensor->maxtime();
 	char lastscanbuf[50],lastpollbuf[50];
 	time_t lastscan=hist->getlastscantime();
 	time_t lastpolltime=hist->getlastpolltime();
-	return strconcat(string_view(""),starttext ,name1,hist->shortsensorname(),name2,usedtext->sensorstarted,sep2,string_view(starts, datestr(stime,starts)),hist->isLibre3()?"":sep1,hist->isLibre3()?"":usedtext->lastscanned,hist->isLibre3()?"":sep2,hist->isLibre3()?"":string_view(lastscanbuf,datestr(lastscan,lastscanbuf)),lastpolltime>0?strconcat(string_view(""),sep1,usedtext->laststream,sep2):"",lastpolltime>0?string_view(lastpollbuf,datestr(lastpolltime,lastpollbuf)):"",nu<etime?strconcat(string_view(""),sep1,usedtext->sensorends,sep2):"",
-nu<etime?string_view(ends, datestr(etime,ends)):string_view("",0));
+	return strconcat(string_view(""),starttext ,name1,hist->showsensorname(),name2,usedtext->sensorstarted,sep2,string_view(starts, datestr(stime,starts)),!hist->isLibre2()?"":sep1,!hist->isLibre2()?"":usedtext->lastscanned,!hist->isLibre2()?"":sep2,!hist->isLibre2()?"":string_view(lastscanbuf,datestr(lastscan,lastscanbuf)),lastpolltime>0?strconcat(string_view(""),sep1,usedtext->laststream,sep2):"",lastpolltime>0?string_view(lastpollbuf,datestr(lastpolltime,lastpollbuf)):"",nu<etime?strconcat(string_view(""),sep1,usedtext->sensorends,sep2):"",
+nu<etime?string_view(ends, datestr(etime,ends)):string_view("",0),sep1,usedtext->sensorexpectedend,sep2,string_view(pends, datestr(reallends,pends)));;
 	}
 
 #ifndef WEAROS
 virtual int display() override {
 //	textbox(usedtext->history,getsensorhelp(hist->isLibre3()?usedtext->history3info:usedtext->historyinfo,"","\n","\n"," "));
-	textbox(usedtext->history,text);
+//	textbox(usedtext->history,text);
+	textbox("",text);
 	return 1;
 	}
 void speak() {
@@ -3138,22 +3286,14 @@ virtual int display() override {
 
 };
 //histgegs gegs(
-strconcat getsensortext(const SensorGlucoseData *hist) {
-		histgegs gegs(hist);
+strconcat getsensortext(const int sensorindex,const SensorGlucoseData *hist) {
+		histgegs gegs(sensorindex,hist);
 		return gegs.getsensorhelp("","<h1>","</h1>","<br><br>","<br>");
 		}
-template <class TX,class TY> 
-bool nearbyhistory( const float tapx,const float tapy,  const TX &transx,  const TY &transy) {
-	for(int i=histlen-1;i>=0;i--) {
-		const SensorGlucoseData *hist=sensors->getSensorData(hists[i]);
-		const auto [firstpos,lastpos]=histpositions[i];
-			for(auto pos=firstpos;pos<=lastpos;pos++) {
-				uint32_t tim,glu;
-				if((tim=hist->timeatpos(pos))&&( glu=hist->sputnikglucose(pos))) {
-					auto posx=transx(tim),posy=transy( glu);
-					if(nearby(posx-tapx,posy-tapy)) {
+
+static void showhistory(const int sensorindex,const SensorGlucoseData *hist,const float tapx, const float tapy) {
 #ifdef WEAROS
-						histgegs gegs(hist);
+						histgegs gegs(sensorindex,hist);
 
 extern void callshowsensorinfo(const char *text);
 						callshowsensorinfo(gegs.getsensorhelp("","<h1>","</h1>","<br><br>","<br>").data());
@@ -3161,11 +3301,24 @@ extern void callshowsensorinfo(const char *text);
 						::prevtouch.x=tapx;
 						::prevtouch.y=tapy;
 						LOGGER("x=%.1f, y=%.1f\n",tapx,tapy);
-						histgegs *gegs=new histgegs(hist);
+						histgegs *gegs=new histgegs(sensorindex,hist);
 						if(speakout) gegs->speak();
-//						displayer=std::make_unique<histgegs>(hist);
 						displayer.reset(gegs);
 #endif
+      }
+
+template <class TX,class TY> 
+bool nearbyhistory( const float tapx,const float tapy,  const TX &transx,  const TY &transy) {
+	for(int i=histlen-1;i>=0;i--) {
+      const int sensorindex= hists[i];
+		const SensorGlucoseData *hist=sensors->getSensorData(sensorindex);
+		const auto [firstpos,lastpos]=histpositions[i];
+			for(auto pos=firstpos;pos<=lastpos;pos++) {
+				uint32_t tim,glu;
+				if((tim=hist->timeatpos(pos))&&( glu=hist->sputnikglucose(pos))) {
+					auto posx=transx(tim),posy=transy( glu);
+					if(nearby(posx-tapx,posy-tapy)) {
+                  showhistory(sensorindex,hist,tapx,tapy);
 						return true;
 						}
 					}
@@ -3240,7 +3393,7 @@ int64_t longpress(float x,float y) {
 	if(showscans) {
 		for(int i=histlen-1;i>=0;i--) {
 			if(const ScanData *scan=nearbyscan(x,y,scanranges[i].first,scanranges[i].second,transx,transy)) {
-				LOGGER("longpress scan %.1f\n",scan->g/18.0);
+				LOGGER("longpress scan %.1f\n",scan->g/convfactordL);
 				int index=hists[i];
 				scantoshow={index,scan,static_cast<uint32_t>(time(nullptr))};
 				return 0LL;
@@ -3250,7 +3403,10 @@ int64_t longpress(float x,float y) {
 	if(showstream) {
 		for(int i=histlen-1;i>=0;i--) {
 			if(const ScanData *poll=nearbyscan(x,y,pollranges[i].first,pollranges[i].second,transx,transy)) {
-				LOGGER("longpress poll %.1f\n",poll->g/18.0);
+				LOGGER("longpress poll %.1f\n",poll->g/convfactordL);
+                const int sensorindex= hists[i];
+		      const SensorGlucoseData *hist=sensors->getSensorData(sensorindex);
+            showhistory(sensorindex,hist,x,y);
 				return 0LL;
 				}
 			 }
@@ -3285,7 +3441,7 @@ static void highlightnum(const Num *num) {
 		numpagenum(tim) ;
 	else
 #endif
-		starttime=starttimefromtime(tim);
+		setstarttime(starttimefromtime(tim));
 	}
 
 static uint32_t glucosesearch(uint32_t starttime,uint32_t endtime) ;
@@ -3381,7 +3537,7 @@ static const Glucose * findhistory(const SensorGlucoseData  * hist, const uint32
 static void glucosesel(uint32_t tim) {
 	if(tim>starttime&&tim<timeend())
 		return;
-	starttime=starttimefromtime(tim);
+	setstarttime(starttimefromtime(tim));
 	}
 #ifndef NDEBUG
 void logglucose(const char *str,const Glucose *glu) {
@@ -3652,19 +3808,21 @@ return 1;
 static constexpr const int day=60*60*24;
 void prevdays(int nr) {
 	//starttime=starttimefromtime(starttime-nr*day);
-	starttime-=nr*day;
+	setstarttime(starttime-nr*day);
 	auto minstart= minstarttime();
 	if(starttime<minstart)
-		starttime=minstart;
+		setstarttime(minstart);
 	}
 void nextdays(int nr) {
 	//starttime=starttimefromtime(starttime+day*nr);
-	starttime+=day*nr;
+	setstarttime(starttime+day*nr);
 #ifndef WEAROS
 	if(!showpers) 
 #endif
 	{
-		auto maxstart= maxstarttime(); if(starttime>maxstart) starttime=maxstart;
+		auto maxstart= maxstarttime(); 
+		if(starttime>maxstart) 
+			setstarttime(maxstart);
 		}
 	}
 
@@ -3709,13 +3867,6 @@ constexpr const int trendoff=
 0
 #else
 1
-#endif
-;
-constexpr const int arrowoff=
-#ifdef WEAROS
-6
-#else
-8
 #endif
 ;
 	char *ptr=hourminstr+
@@ -3816,13 +3967,13 @@ void setfloatptr() {
 
 void setnewamount() {
 
+/*
 	int newamountoff=
 #ifdef WEAROS
 	3;
 #else
 	2;
 #endif
-/*
 	if(settings->staticnum()) {
 		usedtext->menustr1[newamountoff]=nothing;
 		}
@@ -4043,7 +4194,7 @@ static int64_t doehier(int menu,int item) {
 //				case 1: return 1LL*0x10+3;
 				case 1: {
 					auto max=time(nullptr);
-					starttime=max-duration*3/5;
+					setstarttime(max-duration*3/5);
 					return -1LL;
 					}
 				case 2: prevdays(1); return -1LL;
@@ -4073,11 +4224,11 @@ static int64_t doehier(int menu,int item) {
 //					if(settings->staticnum()) return -1LL;
 					break;
 				case 3:	nrmenu=0; 
-					if(!numlist) {
-						void numiterinit();
-						numiterinit();
-						numlist=1;
-						}
+				   if(!numlist) {
+				      void numiterinit();
+				      numiterinit();
+				      numlist=1;
+				      }
 					break;
 
 #ifdef PERCENTILES
@@ -4121,7 +4272,7 @@ static int64_t doehier(int menu,int item) {
 			auto max=time(nullptr);
 		//	starttime=starttimefromtime(max);
 //			if((starttime+duration)<max) 
-			starttime=max-duration*3/5;
+			setstarttime(max-duration*3/5);
 			return -1;
 				};
 			case 3: prevdays(1); return -1;
@@ -4271,22 +4422,31 @@ void showfromstart() {
 	}
 
 void numpagenum(const uint32_t tim) {
-//	const Num *nums[basecount];
 	int tot=0;
 	for(int i=0;i<basecount;i++)  {
 		const Num *ptr=numdatas[i]->firstnotless(tim) ;
 		if(ptr==numdatas[i]->end()||ptr->gettime()>tim)
 			ptr--;
-		int pos=ptr-numdatas[i]->begin()+1;
-		if(pos>0)
+//		int pos=ptr-numdatas[i]->begin()+1;
+		int pos=ptr-numdatas[i]->begin();
+		LOGGER("pos=%d\n",pos);
+		if(pos>0) {
+			LOGGER("num %.1f %s\n",ptr->value, settings->getlabel(ptr->type).data());
 			tot+=pos;
+			}
 		numiters[i].iter=ptr;
 		}
-
-	int percol=dheight/textheight;
-	int tever=tot%(nrcolumns*percol);
-	while(tever--) {
-//		findnewest(numiters,basecount,notvali);
+	const int percol=dheight/textheight;
+	const int onpage=nrcolumns*percol;
+	#ifndef NOLOG
+	time_t tims=tim;
+	LOGGER("nrcolumns=%d percol=%d onpage=%d %s",nrcolumns,percol,onpage,ctime(&tims));
+	#endif
+	for(int tever=tot%onpage
+#ifndef NOLOG
+	, niets=LOGGER("tever=%d\n",tever)
+#endif
+	;tever>0;--tever) {
 		ifindnewest(numiters,basecount,notvali);
 		};
 	int newest;
@@ -4314,7 +4474,11 @@ void shownumlist() {
 	}
 NumIter<Num> *mknumiters() ;
 
+
+extern int getcolumns(int width);
 void numiterinit() {
+	nrcolumns=getcolumns(round(3.4*smallsize));
+	LOGAR("numiterinit");
 	basecount=numdatas.size();
 	delete[] numiters;
 	numiters=mknumiters() ;
@@ -4404,7 +4568,7 @@ char buf[80];
 		return;
 	if((starttime+duration)>=first&&starttime<second)
 		return;
-	starttime=starttimefromtime((first+second)/2);
+	setstarttime(starttimefromtime((first+second)/2));
 	return;
 	}
 #endif

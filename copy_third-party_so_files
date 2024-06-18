@@ -1,0 +1,34 @@
+#!/bin/bash
+
+set -o errexit
+set -o errtrace
+trap 'echo; echo Aborting.' ERR
+
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 {Juggluco apk file pathname}"
+    exit 1
+fi
+
+apk_pathname=$(realpath $1)
+cd "$(dirname "$0")"/Common/src
+
+for platform in arm64-v8a armeabi-v7a x86_64 x86; do
+    mkdir -p main/jniLibs/$platform
+    unzip -joq "$apk_pathname" -d main/jniLibs/$platform \
+            lib/$platform/libcalibrat2.so
+
+    mkdir -p libre3/jniLibs/$platform
+    unzip -joq "$apk_pathname" -d libre3/jniLibs/$platform \
+            lib/$platform/{libcrl_dp,liblibre3extension,libinit}.so
+done
+
+for platform in armeabi-v7a x86_64 x86; do
+    unzip -joq "$apk_pathname" -d main/jniLibs/$platform \
+            lib/$platform/libcalibrate.so
+done
+
+for platform in arm64-v8a armeabi-v7a; do
+    mkdir -p mobileSi/jniLibs/$platform
+    unzip -joq "$apk_pathname" -d mobileSi/jniLibs/$platform \
+            lib/$platform/{libnative-algorithm-jni-v113B,libnative-encrypy-decrypt-v110,libnative-struct2json,libnative-algorithm-v1_1_3_B,libnative-sensitivity-v110}.so
+done
